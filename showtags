@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+# vim: set ft=python ts=4 sw=4 et ai:
+
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+
+import os,sys
+
+
+
+class MyWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self,title='ShowTags' )
+        self.connect('destroy',Gtk.main_quit)
+        
+        self.mainbox = Gtk.VBox( )
+        self.mainbox.set_size_request(600,800)
+        self.add(self.mainbox)
+        self.tagview = TagView( )
+        self.mainbox.pack_start(self.tagview,True,True,6)
+        self.files_button = Gtk.Button(label='Flacs')
+        self.mainbox.pack_start(self.files_button,False,False,6)
+        self.files_button.connect('clicked', self.choosefiles)
+
+
+    def choosefiles(self,data):
+        print (data)
+        dialog = FlacBrowser( )
+        dialog.show_all( )
+
+class TagView(Gtk.TreeView):
+    def __init__(self):
+        self.tagvalues = Model( )
+        Gtk.TreeView.__init__(self, model=self.tagvalues)
+        self.set_size_request(500,700)
+        
+class Model(Gtk.ListStore):
+    def __init__(self):
+        Gtk.ListStore.__init__(self,str,int,str)
+        
+#    def flacnames(self,path):
+
+
+class FlacBrowser(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title='Choose FLAC Folder')
+        self.mainbox = Gtk.VBox( )
+        self.browser = Gtk.FileChooserWidget( )
+        self.mainbox.add(self.browser)
+        self.add(self.mainbox)
+        self.ok_button = Gtk.Button(label='OK')
+        self.cancel_button = Gtk.Button(label='Cancel')
+        self.hbox = Gtk.HBox( )
+        self.hbox.pack_start(self.cancel_button,False,False,6)
+        self.hbox.pack_start(self.ok_button,False,False,6)
+        self.mainbox.add(self.hbox)
+        self.mainbox.set_size_request(400,500)
+
+
+
+
+
+win = MyWindow( )
+win.connect('destroy',Gtk.main_quit)
+
+win.show_all( )
+
+Gtk.main( )
+
+
+
+
