@@ -21,12 +21,33 @@ class MyWindow(Gtk.Window):
         self.mainbox.pack_start(self.tagview,True,True,6)
         self.files_button = Gtk.Button(label='Flacs')
         self.mainbox.pack_start(self.files_button,False,False,6)
-        self.files_button.connect('clicked', self.choosefiles)
+        self.files_button.connect('clicked', self.chooseflacs)
+        self.txt_button = Gtk.Button(label='TextFile')
+        self.txt_button.connect('clicked', self.choose_txt)
+        
+        self.flacbutton = Gtk.FileChooserButton( )
+        self.flacbutton.set_name('Flac Folder')
+        fltr = Gtk.FileFilter( )
+        fltr.add_pattern('*.flac')
+        self.flacbutton.set_filter(fltr)
+        self.mainbox.pack_start(self.flacbutton,True,True,4)
+        self.txtbutton = Gtk.FileChooserButton( )
+        self.txtbutton.set_name('Info File')
+        fltr = Gtk.FileFilter( )
+        fltr.add_pattern('*.txt')
+        self.txtbutton.set_filter(fltr)
+        self.mainbox.pack_start(self.txtbutton,True,True,4)
 
 
-    def choosefiles(self,data):
-        print (data)
-        dialog = FlacBrowser( )
+
+    def choose_txt(self,data):
+        dialog = FileBrowser('Text File')
+        dialog.show_all( )
+
+    def chooseflacs(self,data):
+        dialog = FileBrowser('FLAC Folder')
+
+
         dialog.show_all( )
 
 class TagView(Gtk.TreeView):
@@ -42,9 +63,15 @@ class Model(Gtk.ListStore):
 #    def flacnames(self,path):
 
 
-class FlacBrowser(Gtk.Window):
-    def __init__(self):
-        Gtk.Window.__init__(self, title='Choose FLAC Folder')
+
+
+
+
+
+
+class FileBrowser(Gtk.Window):
+    def __init__(self,title=None):
+        Gtk.Window.__init__(self, title=title)
         self.mainbox = Gtk.VBox( )
         self.browser = Gtk.FileChooserWidget( )
         self.mainbox.add(self.browser)
@@ -54,9 +81,17 @@ class FlacBrowser(Gtk.Window):
         self.hbox = Gtk.HBox( )
         self.hbox.pack_start(self.cancel_button,False,False,6)
         self.hbox.pack_start(self.ok_button,False,False,6)
-        self.mainbox.add(self.hbox)
-        self.mainbox.set_size_request(400,500)
-
+        self.mainbox.pack_start(self.hbox,False,False,4)
+        self.mainbox.set_size_request(400,600)
+        filefilter = Gtk.FileFilter( )
+        filefilter.set_name('FLACs')
+        filefilter.add_mime_type('audio/x-flac')
+        filefilter.add_mime_type('audio/flac')
+        folderfilter = Gtk.FileFilter( )
+        folderfilter.set_name('Folder')
+        folderfilter.add_mime_type('inode/directory')
+        self.browser.set_filter(folderfilter)
+        
 
 
 
