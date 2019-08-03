@@ -6,6 +6,9 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
 
 import os,sys
+from subprocess import check_output
+from textview import TextBox
+from tempfile import NamedTemporaryFile as NTF
 
 
 
@@ -15,50 +18,151 @@ class MyWindow(Gtk.Window):
         self.connect('destroy',Gtk.main_quit)
         
         self.mainbox = Gtk.VBox( )
-        self.mainbox.set_size_request(600,800)
-        self.add(self.mainbox)
+        self.mainbox.set_size_request(600,960)
+#        self.add(self.mainbox)
         self.tagview = TagView( )
+        self.model = Model( )
+        self.tagview.set_model(self.model)
+
+
+
         self.mainbox.pack_start(self.tagview,True,True,6)
-        self.files_button = Gtk.Button(label='Flacs')
-        self.mainbox.pack_start(self.files_button,False,False,6)
-        self.files_button.connect('clicked', self.chooseflacs)
-        self.txt_button = Gtk.Button(label='TextFile')
-        self.txt_button.connect('clicked', self.choose_txt)
+        self.text_button = Gtk.Button(label='Text File')
+        self.text_button.connect('clicked', self.choose_txt)
         
-        self.flacbutton = Gtk.FileChooserButton( )
-        self.flacbutton.set_name('Flac Folder')
-        fltr = Gtk.FileFilter( )
-        fltr.add_pattern('*.flac')
-        self.flacbutton.set_filter(fltr)
-        self.mainbox.pack_start(self.flacbutton,True,True,4)
-        self.txtbutton = Gtk.FileChooserButton( )
-        self.txtbutton.set_name('Info File')
-        fltr = Gtk.FileFilter( )
-        fltr.add_pattern('*.txt')
-        self.txtbutton.set_filter(fltr)
-        self.mainbox.pack_start(self.txtbutton,True,True,4)
+        self.flac_button = Gtk.Button(label='FLAC folder')
+        self.flac_button.connect('clicked', self.choose_folder)
+        self.reload_button = Gtk.Button(label='Reload')
+        self.reload_button.connect('clicked',self.reload)
 
+        vbox1 = Gtk.VBox( )
+        vbox2 = Gtk.VBox( )
+        vbox1.set_size_request(300,50)
+        vbox2.set_size_request(300,50)
+        grid = Gtk.Grid( )
+        vbox2.pack_start(self.text_button,True,True,2)
+        vbox2.pack_start(self.flac_button,True,True,2)
+        vbox2.pack_start(self.reload_button,True,True,2)
+        grid.attach(vbox1,1,1,1,2) 
+        grid.attach_next_to(vbox2,vbox1,Gtk.PositionType.RIGHT,2,2)
+        self.text_button.set_sensitive(False)
+        self.mainbox.pack_start(grid,True,True,4)
 
+        stack = Gtk.Stack()
+        stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        stack.set_transition_duration(1000)
+        switcher = Gtk.StackSwitcher( )
+        switcher.set_stack(stack)
+        
+        self.textbox = TextBox( )
+        stack.add_titled(self.mainbox,'mainbox','Main')
+        stack.add_titled(self.textbox,'textbox','Text')
+        vbox = Gtk.VBox( )
+        vbox.pack_start(switcher,True,True,0)
+        vbox.pack_start(stack,True,True,0)
+        self.add(vbox)
+        
+
+    def reload(self,data=None):
+        buf = self.textbox.buffer
+
+        text = buf.get_text(buf.get_start_iter( ),
+                           buf.get_end_iter( ),
+                           True)
+        fp = NTF(mode='w',delete=True)
+        fp.write(text)
+        fp.flush( )
+        tf = TitleFinder(fp.name)
+        self.titles = tf.find_titles( )
+        col_len = len(self.model)
+        for n in range(col_len):
+            self.model[n][2]=''
+        for n,title in enumerate(self.titles):
+            try:
+                self.model[n][2]=title
+            except IndexError:
+                s = str(n+1).zfill(2)
+                self.model.append(['',s,title])
+
+        fp.close( )
+    
 
     def choose_txt(self,data):
-        dialog = FileBrowser('Text File')
-        dialog.show_all( )
+        dialog = FileBrowser('Choose Text File')
+        resp = dialog.run( )   
+        if resp == Gtk.ResponseType.OK:
+            fn = dialog.get_filename( )
+            self.text = [fn]
+            dialog.destroy( )
+        else:
+            dialog.destroy( )
+            return
+        
+        tf = TitleFinder(self.text[0])
+        self.titles = tf.find_titles( )
+        columns = self.tagview.get_columns( )
+        columns[2].set_visible(True)
+        columns[1].set_visible(True)
 
-    def chooseflacs(self,data):
-        dialog = FileBrowser('FLAC Folder')
+        for n,title in enumerate(self.titles):
+            try:
+                self.model[n][2]=title
+            except IndexError:
+                s = str(n+1).zfill(2)
+                self.model.append(['',s,title])
+        with open(self.text[0],'r') as txtfile:
+            self.text = txtfile.read( )
+
+        self.textbox.buffer.set_text(self.text)
 
 
-        dialog.show_all( )
+
+    def choose_folder(self,data):
+        dialog = FileBrowser('Choose FLAC Folder')
+        resp = dialog.run( )
+        if resp == Gtk.ResponseType.OK:
+            fn = dialog.get_filename( )
+            self.flacs = [f for f in os.listdir(fn) if f.endswith('.flac')]
+            self.flacs.sort( )
+        else:
+            dialog.destroy( )
+            return
+        dialog.destroy( ) 
+        filename = Gtk.CellRendererText( )
+        title = Gtk.CellRendererText( )
+        number = Gtk.CellRendererText( )
+        title.set_property('editable',True)
+        title.connect('edited',self.on_edited)
+        col = Gtk.TreeViewColumn('filenames',filename,text=0)
+        col.set_sort_column_id(0)
+        self.tagview.append_column(col)
+        col = Gtk.TreeViewColumn('track #',number,text=1)
+        col.set_visible(False)
+        self.tagview.append_column(col)
+        col = Gtk.TreeViewColumn('title',title,text=2)
+        col.set_visible(False)
+        self.tagview.append_column(col)
+        self.model = self.tagview.get_model( )
+        for n,flac in enumerate(self.flacs):
+            s = str(n+1).zfill(2)
+            self.model.append([flac,s,''])
+        self.text_button.set_sensitive(True)
+
+    def on_edited(self,d1=None,path=None,newtext=None):
+        self.model[path][2]=newtext
+
+
 
 class TagView(Gtk.TreeView):
     def __init__(self):
         self.tagvalues = Model( )
         Gtk.TreeView.__init__(self, model=self.tagvalues)
         self.set_size_request(500,700)
-        
+        self.limit = 40
+
 class Model(Gtk.ListStore):
     def __init__(self):
-        Gtk.ListStore.__init__(self,str,int,str)
+        Gtk.ListStore.__init__(self,str,str,str)
         
 #    def flacnames(self,path):
 
@@ -66,32 +170,47 @@ class Model(Gtk.ListStore):
 
 
 
-
-
-
-class FileBrowser(Gtk.Window):
-    def __init__(self,title=None):
-        Gtk.Window.__init__(self, title=title)
-        self.mainbox = Gtk.VBox( )
-        self.browser = Gtk.FileChooserWidget( )
-        self.mainbox.add(self.browser)
-        self.add(self.mainbox)
-        self.ok_button = Gtk.Button(label='OK')
-        self.cancel_button = Gtk.Button(label='Cancel')
-        self.hbox = Gtk.HBox( )
-        self.hbox.pack_start(self.cancel_button,False,False,6)
-        self.hbox.pack_start(self.ok_button,False,False,6)
-        self.mainbox.pack_start(self.hbox,False,False,4)
-        self.mainbox.set_size_request(400,600)
-        filefilter = Gtk.FileFilter( )
-        filefilter.set_name('FLACs')
-        filefilter.add_mime_type('audio/x-flac')
-        filefilter.add_mime_type('audio/flac')
-        folderfilter = Gtk.FileFilter( )
-        folderfilter.set_name('Folder')
-        folderfilter.add_mime_type('inode/directory')
-        self.browser.set_filter(folderfilter)
+class FileBrowser(Gtk.FileChooserDialog):
+    def __init__(self,title):
+        if title == 'Choose FLAC Folder':
+            action = Gtk.FileChooserAction.SELECT_FOLDER
+            fltr = Gtk.FileFilter( )
+            fltr.set_name('flac folder')
+            fltr.add_mime_type('inode/directory')
+            
+        elif title == 'Choose Text File':
+            action = Gtk.FileChooserAction.OPEN
+            fltr = Gtk.FileFilter( )
+            fltr.set_name('text file')
+            fltr.add_mime_type('text/plain')
         
+        Gtk.FileChooserDialog.__init__(self, 
+                title=title,
+                parent=None,
+                action=action
+                )
+        self.set_filter(fltr)
+        self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
+
+
+
+class TitleFinder(object):
+    def __init__(self,textfile_name):
+        self.textfile = textfile_name
+        
+    def find_titles(self):
+        titles = check_output(['find_titles',self.textfile])
+        title_list = titles.splitlines( )
+        self.titles = [title.decode( ) for title in title_list]
+        del titles
+        del title_list
+        return self.titles
+
+
+
+
+
 
 
 
