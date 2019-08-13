@@ -12,26 +12,67 @@ import os,sys
 from subprocess import check_output
 from textview import TextBox
 from tempfile import NamedTemporaryFile as NTF
+import re
+from mutagen import File
+import mutagen
 
 
 
 class MyWindow(Gtk.Window):
     rescan_flag = False
 
+    def removables_changed(self,entry,data=None):
+        remove = entry.get_text( )
+        for row in self.model:
+            row[2] = row[3]
+            for ch in remove:
+                val = row[2]
+                if ch in val:
+                    row[2] = val.replace(ch,'')
+        
+    def on_clear_btn(self,button):
+        self.model.clear( )
+
+    def on_string_entry(self,entry):
+        s = entry.get_text( )
+        for row in self.model:
+            row[2] = row[2].replace(s,'')
+        
+    def do_tagging(self,widget):
+        print ('tagging')
+        for row in self.model:
+            print (row[0])
+            fpath = os.path.join(os.path.realpath(self.showpath),row[0])
+            track = row[1]
+            title = row[2]
+            print (os.path.exists(fpath))
+            if os.path.exists(fpath) and track and title:
+                mf = File(fpath)
+                mf['tracknumber'] = track
+                mf['title'] = title
+                mf.save( )
+                print ('tagged!')
+            
+        print ('done')
+
+
+
     def __init__(self):
         Gtk.Window.__init__(self,title='ShowTags' )
         self.connect('destroy',Gtk.main_quit)
         
         self.mainbox = Gtk.VBox( )
-        self.mainbox.set_size_request(600,960)
+        self.mainbox.set_size_request(600,860)
 #        self.add(self.mainbox)
         self.tagview = TagView( )
         self.model = Model( )
         self.tagview.set_model(self.model)
-        self.tagview.set_size_request(580,800)
+        self.tagview.set_size_request(580,720)
+        
+        self.scrlwindow = ScrollArea( )
+        self.scrlwindow.add(self.tagview)
 
-
-        self.mainbox.pack_start(self.tagview,True,True,6)
+        self.mainbox.pack_start(self.scrlwindow,True,True,6)
         self.text_button = Gtk.Button(label='Text File')
         self.text_button.connect('clicked', self.choose_txt)
         
@@ -39,24 +80,54 @@ class MyWindow(Gtk.Window):
         self.flac_button.connect('clicked', self.choose_folder)
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked',self.rescan)
+        
+        self.tagging = Gtk.Button(label='Tag')
+        self.tagging.connect('clicked',self.do_tagging)
+        self.tagging.set_sensitive(False)
 
         vbox1 = Gtk.VBox( )
         vbox2 = Gtk.VBox( )
-        vbox1.set_size_request(300,50)
-        vbox2.set_size_request(300,50)
+        vbox3 = Gtk.VBox( )
+        vbox1.set_size_request(200,-1)
+        vbox2.set_size_request(200,-1)
+        vbox3.set_size_request(200,-1)
         grid = Gtk.Grid( )
-        vbox2.pack_start(self.text_button,True,True,2)
-        vbox2.pack_start(self.flac_button,True,True,2)
-        vbox2.pack_start(self.reload_button,True,True,2)
-        grid.attach(vbox1,1,1,1,2) 
+        grid.set_size_request(600,140)
+        vbox2.pack_start(self.text_button,True,True,0)
+        vbox2.pack_start(self.flac_button,True,True,0)
+        vbox2.pack_start(self.reload_button,True,True,0)
+        grid.attach(vbox1,1,1,1,2)
         grid.attach_next_to(vbox2,vbox1,Gtk.PositionType.RIGHT,2,2)
+        grid.attach_next_to(vbox3,vbox2,Gtk.PositionType.RIGHT,2,2)
         self.text_button.set_sensitive(False)
-        self.mainbox.pack_start(grid,True,True,4)
+        hbox = Gtk.HBox( )
+        hbox.pack_start(grid,False,False,0)
+        vbox1.pack_start(Gtk.Label(label='Characters to Remove from All Titles'),False,True,0)
+        removables = Gtk.Entry( )
+        removables.set_size_request(-1,12)
+        removables.connect('changed', self.removables_changed)
+        vbox1.pack_start(removables, False, True, 0)
+        
+        strings = Gtk.Entry( )
+        strings.set_size_request(-1,12)
+#        strings.connect('changed',self.strings_changed)
+        strings.connect('activate',self.on_string_entry)
+        vbox3.pack_start(Gtk.Label(label='Strings to Remove'),False,True,0)
+        vbox3.pack_start(strings,False,True,0)
+        vbox3.pack_start(self.tagging,False,True,0)
+
+        clearall_button = Gtk.Button(label='Clear All')
+#        vbox1.pack_end(clearall_button,False,True,2)
+        clearall_button.connect('clicked',self.on_clear_btn)
+        vbox3.pack_start(clearall_button,False,True,0)
+        self.mainbox.pack_start(hbox,False,False,0)
 
         stack = Gtk.Stack()
         stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
-        stack.set_transition_duration(1000)
+        stack.set_transition_duration(600)
         switcher = Gtk.StackSwitcher( )
+        switcher.set_size_request(-1,-1)
+
         switcher.set_stack(stack)
         
         self.textbox = TextBox( )
@@ -65,19 +136,24 @@ class MyWindow(Gtk.Window):
         stack.add_titled(self.textbox,'textbox','Text')
         stack.connect('notify::visible-child', self.switched)
         vbox = Gtk.VBox( )
-        vbox.pack_start(switcher,True,True,0)
+        vbox.pack_start(switcher,False,False,2)
         vbox.pack_start(stack,True,True,0)
         self.add(vbox)
         self.stack = stack
         self.reload_button.set_sensitive(False)
-        
+
+
+
+
+
 
     def text_changed(self,d1,d2=None):
 #        print (d1)
 #        print (d2)
 #        print (self.stack.get_visible_child( ))
         self.rescan_flag = True
-
+        if self.model.get_iter_first( ):
+            self.tagging.set_sensitive(True)
 
     def switched(self,data=None,data2=None):
 #        print (data)
@@ -103,10 +179,11 @@ class MyWindow(Gtk.Window):
         for n,title in enumerate(self.titles):
             try:
                 self.model[n][2]=title
+                self.model[n][3]=title
             except IndexError:
                 if title:
                     s = str(n+1).zfill(2)
-                    self.model.append(['',s,title])
+                    self.model.append(['',s,title,title])
 
         fp.close( )
         self.reload_button.set_sensitive(False)
@@ -129,18 +206,22 @@ class MyWindow(Gtk.Window):
         columns[1].set_visible(True)
 
         for n,title in enumerate(self.titles):
+            title = re.sub('^\s*','',title)
+            title = re.sub('\s*$','',title)
             try:
                 self.model[n][2]=title
+                self.model[n][3]=title
             except IndexError:
                 if title:
                     s = str(n+1).zfill(2)
-                    self.model.append(['',s,title])
+                    self.model.append(['',s,title,title])
         with open(self.text[0],'r') as txtfile:
             self.text = txtfile.read( )
 
         self.textbox.buffer.set_text(self.text)
-        if self.rescan_flag:
-            self.rescan_flag = False
+        self.tagging.set_sensitive(True)
+#        if self.rescan_flag:
+#            self.rescan_flag = False
     
 
 
@@ -151,6 +232,7 @@ class MyWindow(Gtk.Window):
             fn = dialog.get_filename( )
             self.flacs = [f for f in os.listdir(fn) if f.endswith('.flac')]
             self.flacs.sort( )
+            self.showpath = fn
         else:
             dialog.destroy( )
             return
@@ -174,7 +256,7 @@ class MyWindow(Gtk.Window):
         for n,flac in enumerate(self.flacs):
             if flac:
                 s = str(n+1).zfill(2)
-                self.model.append([flac,s,''])
+                self.model.append([flac,s,'',''])
         self.text_button.set_sensitive(True)
         self.flac_button.set_sensitive(False)
 
@@ -202,12 +284,19 @@ MENU_XML = '''
 </interface>
 '''
 
+class ScrollArea(Gtk.ScrolledWindow):
+    def __init__(self):
+        Gtk.ScrolledWindow.__init__(self)
+        self.set_size_request(400,700)
+        
+
+
 
 class TagView(Gtk.TreeView):
     def __init__(self):
         self.tagvalues = Model( )
         Gtk.TreeView.__init__(self, model=self.tagvalues)
-        self.set_size_request(500,700)
+        self.set_size_request(320,600)
         self.limit = 40
         self.connect('button-press-event',self.on_tagview_clicked,self)
 
@@ -271,12 +360,11 @@ class TagView(Gtk.TreeView):
                 break
             model[itr][2] = model[nxt_iter][2]
             itr = nxt_iter
-        model[itr][2] = ''
-
+        model.remove(itr)
 
 class Model(Gtk.ListStore):
     def __init__(self):
-        Gtk.ListStore.__init__(self,str,str,str)
+        Gtk.ListStore.__init__(self,str,str,str,str)
         
 class FileBrowser(Gtk.FileChooserDialog):
     def __init__(self,title):
