@@ -15,7 +15,7 @@ from tempfile import NamedTemporaryFile as NTF
 import re
 from mutagen import File
 import mutagen
-
+from combo import TagCombo
 
 
 class MyWindow(Gtk.Window):
@@ -55,8 +55,6 @@ class MyWindow(Gtk.Window):
             
         print ('done')
 
-
-
     def __init__(self):
         Gtk.Window.__init__(self,title='ShowTags' )
         self.connect('destroy',Gtk.main_quit)
@@ -80,7 +78,7 @@ class MyWindow(Gtk.Window):
         self.flac_button.connect('clicked', self.choose_folder)
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked',self.rescan)
-        
+        self.reload_button.set_tooltip_text('Rescan the text in the\nTextView for titles') 
         self.tagging = Gtk.Button(label='Tag')
         self.tagging.connect('clicked',self.do_tagging)
         self.tagging.set_sensitive(False)
@@ -93,8 +91,8 @@ class MyWindow(Gtk.Window):
         vbox3.set_size_request(200,-1)
         grid = Gtk.Grid( )
         grid.set_size_request(600,140)
-        vbox2.pack_start(self.text_button,True,True,0)
         vbox2.pack_start(self.flac_button,True,True,0)
+        vbox2.pack_start(self.text_button,True,True,0)
         vbox2.pack_start(self.reload_button,True,True,0)
         grid.attach(vbox1,1,1,1,2)
         grid.attach_next_to(vbox2,vbox1,Gtk.PositionType.RIGHT,2,2)
@@ -107,19 +105,20 @@ class MyWindow(Gtk.Window):
         removables.set_size_request(-1,12)
         removables.connect('changed', self.removables_changed)
         vbox1.pack_start(removables, False, True, 0)
-        
+        removables.set_tooltip_text('Type a string of single characters\nto remove from all titles in which they exist')
+
         strings = Gtk.Entry( )
         strings.set_size_request(-1,12)
-#        strings.connect('changed',self.strings_changed)
         strings.connect('activate',self.on_string_entry)
-        vbox3.pack_start(Gtk.Label(label='Strings to Remove'),False,True,0)
-        vbox3.pack_start(strings,False,True,0)
+        strings.set_tooltip_text('Type any word or group of characters\n and press Return to remove them from all\ntitles in which they exist')
+        vbox1.pack_start(Gtk.Label(label='Strings to Remove'),False,True,0)
+        vbox1.pack_start(strings,False,True,0)
         vbox3.pack_start(self.tagging,False,True,0)
 
         clearall_button = Gtk.Button(label='Clear All')
 #        vbox1.pack_end(clearall_button,False,True,2)
         clearall_button.connect('clicked',self.on_clear_btn)
-        vbox3.pack_start(clearall_button,False,True,0)
+        vbox2.pack_start(clearall_button,False,True,0)
         self.mainbox.pack_start(hbox,False,False,0)
 
         stack = Gtk.Stack()
@@ -141,7 +140,9 @@ class MyWindow(Gtk.Window):
         self.add(vbox)
         self.stack = stack
         self.reload_button.set_sensitive(False)
-
+        
+        self.tc = TagCombo( )
+        vbox.pack_end(self.tc.hbox,False,False,2)
 
 
 
