@@ -18,6 +18,7 @@ import mutagen
 from combo import TagCombo
 
 
+
 class MyWindow(Gtk.Window):
     rescan_flag = False
 
@@ -30,14 +31,32 @@ class MyWindow(Gtk.Window):
                 if ch in val:
                     row[2] = val.replace(ch,'')
         
-    def on_clear_btn(self,button):
+    def on_clear_btn(self,button,flac_btn):
         self.model.clear( )
+        self.tc.val_model.clear( )
+        self.tc.combo_model.clear( )
+        for tag in self.tc.tags:
+            self.tc.combo_model.append([tag])
+        for val in self.tc.vals:
+            self.tc.val_model.append(['---'])
+
+        flac_btn.set_sensitive(True)
+        button.set_sensitive(True)
+        self.text_button.set_sensitive(False)
 
     def on_string_entry(self,entry):
         s = entry.get_text( )
         for row in self.model:
             row[2] = row[2].replace(s,'')
-        
+    
+    def on_rename(self,widget):
+        print ('renaming')
+        pattern = self.rename_pattern.get_text( )
+        fnames = [row[0] for row in self.model]
+        pathnames = [os.path.join(self.showpath,fname) for fname in fnames]
+        for pname in pathnames:
+            print (check_output(['spatter', '--tag2fn', pattern, pname]))
+   
     def do_tagging(self,widget):
         print ('tagging')
         for row in self.model:
@@ -50,6 +69,10 @@ class MyWindow(Gtk.Window):
                 mf = File(fpath)
                 mf['tracknumber'] = track
                 mf['title'] = title
+                
+                for item in self.tc.tag_dict:
+                    mf[item] = self.tc.tag_dict[item]
+
                 mf.save( )
                 print ('tagged!')
             
@@ -78,7 +101,7 @@ class MyWindow(Gtk.Window):
         self.flac_button.connect('clicked', self.choose_folder)
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked',self.rescan)
-        self.reload_button.set_tooltip_text('Rescan the text in the\nTextView for titles') 
+        self.reload_button.set_tooltip_text('Rescan for titles in\nthe text in the TextView') 
         self.tagging = Gtk.Button(label='Tag')
         self.tagging.connect('clicked',self.do_tagging)
         self.tagging.set_sensitive(False)
@@ -106,18 +129,33 @@ class MyWindow(Gtk.Window):
         removables.connect('changed', self.removables_changed)
         vbox1.pack_start(removables, False, True, 0)
         removables.set_tooltip_text('Type a string of single characters\nto remove from all titles in which they exist')
-
+        self.removables = removables
+        
         strings = Gtk.Entry( )
-        strings.set_size_request(-1,12)
+        strings.set_size_request(-1,16)
         strings.connect('activate',self.on_string_entry)
         strings.set_tooltip_text('Type any word or group of characters\n and press Return to remove them from all\ntitles in which they exist')
+        self.strings = strings
+
         vbox1.pack_start(Gtk.Label(label='Strings to Remove'),False,True,0)
         vbox1.pack_start(strings,False,True,0)
         vbox3.pack_start(self.tagging,False,True,0)
+        rename_button = Gtk.Button(label='Rename')
+        rename_button.connect('clicked', self.on_rename)
+        vbox3.pack_start(rename_button, False,False,0)
+        rename_pattern = Gtk.Entry( )
+#        rename_pattern.set_placeholder_text('default pattern: %n %t.flac')
+        rename_pattern.set_text('%n %t.flac')
+        rename_pattern.set_has_frame(True)
+        rename_pattern.connect('focus-out-event',self.on_pattern_focus_out)
+        vbox3.pack_start(rename_pattern,False,False,0)
+        self.rename_pattern = rename_pattern 
+        
+
 
         clearall_button = Gtk.Button(label='Clear All')
 #        vbox1.pack_end(clearall_button,False,True,2)
-        clearall_button.connect('clicked',self.on_clear_btn)
+        clearall_button.connect('clicked',self.on_clear_btn,self.flac_button)
         vbox2.pack_start(clearall_button,False,True,0)
         self.mainbox.pack_start(hbox,False,False,0)
 
@@ -140,25 +178,30 @@ class MyWindow(Gtk.Window):
         self.add(vbox)
         self.stack = stack
         self.reload_button.set_sensitive(False)
-        
+        self.flac_button.set_sensitive(True)
         self.tc = TagCombo( )
         vbox.pack_end(self.tc.hbox,False,False,2)
+        vbox1.set_sensitive(False)
+        self.vbox1 = vbox1
+        self.vbox2 = vbox2
+        self.vbox3 = vbox3
+        clearall_button.set_sensitive(False)
+        rename_button.set_sensitive(False)
+        self.clearall_button = clearall_button
+        self.rename_button = rename_button
 
 
+    def on_pattern_focus_out(self,widget,event):
+        print ( widget.get_text( ) )
 
-
+        return False
 
     def text_changed(self,d1,d2=None):
-#        print (d1)
-#        print (d2)
-#        print (self.stack.get_visible_child( ))
         self.rescan_flag = True
         if self.model.get_iter_first( ):
             self.tagging.set_sensitive(True)
 
     def switched(self,data=None,data2=None):
-#        print (data)
-#        print (data2)
         if self.rescan_flag:
             self.rescan_flag = False
             self.reload_button.set_sensitive(True)
@@ -220,10 +263,11 @@ class MyWindow(Gtk.Window):
             self.text = txtfile.read( )
 
         self.textbox.buffer.set_text(self.text)
-        self.tagging.set_sensitive(True)
-#        if self.rescan_flag:
-#            self.rescan_flag = False
-    
+        
+        if self.model[1][2]:
+            self.vbox1.set_sensitive(True)
+            self.tagging.set_sensitive(True)
+            self.rename_button.set_sensitive(True)    
 
 
     def choose_folder(self,data):
@@ -248,42 +292,58 @@ class MyWindow(Gtk.Window):
         col.set_sort_column_id(0)
         self.tagview.append_column(col)
         col = Gtk.TreeViewColumn('track #',number,text=1)
-        col.set_visible(False)
+#        col.set_visible(False)
         self.tagview.append_column(col)
         col = Gtk.TreeViewColumn('title',title,text=2)
-        col.set_visible(False)
+#        col.set_visible(False)
         self.tagview.append_column(col)
         self.model = self.tagview.get_model( )
         for n,flac in enumerate(self.flacs):
             if flac:
                 s = str(n+1).zfill(2)
                 self.model.append([flac,s,'',''])
+
         self.text_button.set_sensitive(True)
         self.flac_button.set_sensitive(False)
+#        self.reload_button.set_sensitive(True)
+        self.clearall_button.set_sensitive(True)
+        self.read_tags(self.flacs)
+        print (self.model[1][2])
+        if self.model[1][2]:
+            self.rename_button.set_sensitive(True)
 
     def on_edited(self,d1=None,path=None,newtext=None):
         self.model[path][2]=newtext
 
+    def read_tags(self,flacs):
+        itr = self.model.get_iter_first( )
+        mfs = []
+        for flac in flacs:
+            f = os.path.join(os.path.realpath(self.showpath),flac)
+            mfs.append(File(f))
+            
+        for mf in mfs:
+            title = mf.get('title',[None])
+            num = mf.get('tracknumber',[None])
+            if title[0]:
+                self.model[itr][2] = mf['title'][0]
+                self.model[itr][3] = mf['title'][0]
+            if num[0]:
+                self.model[itr][1] = mf['tracknumber'][0]
+            itr = self.model.iter_next(itr)
 
+        key_model = self.tc.tagbox.get_model( )
+        val_model  = self.tc.value.get_model( )
+        tags = []
+        for n,row in enumerate(key_model):
+            val_model[n] = mf.get(row[0],['---'])
+            tags.append(key_model[n][0])
+        tags.extend(['tracknumber','title'])
+        for n,key in enumerate(mf.keys( )):
+            if key not in tags:
+                key_model.append([key])
+                val_model.append([mf[key][0]])
 
-
-MENU_XML = '''
-<?xml version=1.0 encoding="UTF-8"?>
-<interface>
-  <menu id="popover">
-    <section>
-        <item>
-            <attribute name="label">Insert</attribute>
-            <attribute name="action">app.insert</attribute>
-        </item>
-        <item>
-            <attribute name="label">Remove</attribute>
-            <attribute name="action">app.remove</attribute>
-        </item>
-    </section>
-  </menu>
-</interface>
-'''
 
 class ScrollArea(Gtk.ScrolledWindow):
     def __init__(self):
@@ -338,7 +398,7 @@ class TagView(Gtk.TreeView):
         itr = self.sel_itr
         vlist = self.vlist
         last = len(model)
-        model.append(['',str(last+1),''])
+        model.append(['',str(last+1),'',''])
         while itr:
             value = model.get_value(itr,2)
             vlist.append(value)
@@ -374,6 +434,7 @@ class FileBrowser(Gtk.FileChooserDialog):
             fltr = Gtk.FileFilter( )
             fltr.set_name('flac folder')
             fltr.add_mime_type('inode/directory')
+            fltr.add_pattern('*.flac')
             
         elif title == 'Choose Text File':
             action = Gtk.FileChooserAction.OPEN
