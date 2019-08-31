@@ -24,4 +24,5 @@ class TextBox(Gtk.ScrolledWindow):
             txt = txtfile.readlines( )
         self.buffer.set_text(txt)
 
-
+    def clear_text(self):
+        self.buffer.set_text('')

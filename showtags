@@ -41,8 +41,18 @@ class MyWindow(Gtk.Window):
             self.tc.val_model.append(['---'])
 
         flac_btn.set_sensitive(True)
-        button.set_sensitive(True)
+        button.set_sensitive(False)
         self.text_button.set_sensitive(False)
+        self.tagging.set_sensitive(False)
+        self.rename_button.set_sensitive(False)
+#        self.strings.set_sensitive(False)
+#        self.removables.set_sensitive(False)
+        self.vbox1.set_sensitive(False)
+
+        for col in self.tagview.get_columns( ):
+            self.tagview.remove_column(col) 
+            del col
+        self.textbox.clear_text( )
 
     def on_string_entry(self,entry):
         s = entry.get_text( )
@@ -71,7 +81,9 @@ class MyWindow(Gtk.Window):
                 mf['title'] = title
                 
                 for item in self.tc.tag_dict:
-                    mf[item] = self.tc.tag_dict[item]
+                    val = self.tc.tag_dict[item]
+                    if val != '' and val != '---':
+                        mf[item] = val
 
                 mf.save( )
                 print ('tagged!')
@@ -88,7 +100,7 @@ class MyWindow(Gtk.Window):
         self.tagview = TagView( )
         self.model = Model( )
         self.tagview.set_model(self.model)
-        self.tagview.set_size_request(580,720)
+        self.tagview.set_size_request(540,640)
         
         self.scrlwindow = ScrollArea( )
         self.scrlwindow.add(self.tagview)
@@ -123,38 +135,36 @@ class MyWindow(Gtk.Window):
         self.text_button.set_sensitive(False)
         hbox = Gtk.HBox( )
         hbox.pack_start(grid,False,False,0)
-        vbox1.pack_start(Gtk.Label(label='Characters to Remove from All Titles'),False,True,0)
+        vbox1.pack_start(Gtk.Label(label='Characters to Remove from All Titles'),False,True,4)
         removables = Gtk.Entry( )
-        removables.set_size_request(-1,12)
+        removables.set_size_request(-1,22)
         removables.connect('changed', self.removables_changed)
-        vbox1.pack_start(removables, False, True, 0)
+        vbox1.pack_start(removables, False, True, 2)
         removables.set_tooltip_text('Type a string of single characters\nto remove from all titles in which they exist')
         self.removables = removables
         
         strings = Gtk.Entry( )
-        strings.set_size_request(-1,16)
+        strings.set_size_request(-1,20)
         strings.connect('activate',self.on_string_entry)
         strings.set_tooltip_text('Type any word or group of characters\n and press Return to remove them from all\ntitles in which they exist')
         self.strings = strings
 
-        vbox1.pack_start(Gtk.Label(label='Strings to Remove'),False,True,0)
+        vbox1.pack_start(Gtk.Label(label='Strings to Remove'),False,True,4)
         vbox1.pack_start(strings,False,True,0)
         vbox3.pack_start(self.tagging,False,True,0)
         rename_button = Gtk.Button(label='Rename')
         rename_button.connect('clicked', self.on_rename)
         vbox3.pack_start(rename_button, False,False,0)
         rename_pattern = Gtk.Entry( )
-#        rename_pattern.set_placeholder_text('default pattern: %n %t.flac')
         rename_pattern.set_text('%n %t.flac')
         rename_pattern.set_has_frame(True)
         rename_pattern.connect('focus-out-event',self.on_pattern_focus_out)
         vbox3.pack_start(rename_pattern,False,False,0)
         self.rename_pattern = rename_pattern 
-        
+        rename_pattern.set_tooltip_text('pattern by which tags will be\ntranslated into filenames\n%n = tracknumber\n%t = title\n%a = artist\n%b = album\n%d = date')
 
 
         clearall_button = Gtk.Button(label='Clear All')
-#        vbox1.pack_end(clearall_button,False,True,2)
         clearall_button.connect('clicked',self.on_clear_btn,self.flac_button)
         vbox2.pack_start(clearall_button,False,True,0)
         self.mainbox.pack_start(hbox,False,False,0)

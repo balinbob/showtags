@@ -27,10 +27,15 @@ class TagCombo(object):
             entry = combo.get_child( )
             self.item = entry.get_text( )
         n = combo.get_active( )
+
         try:
             self.value.set_active(n)
         except:
             self.value.append(['---'])
+
+    
+
+
 
     def on_combo_entered(self, entry,tagcombo):
         item = entry.get_text( )
@@ -70,10 +75,11 @@ class TagCombo(object):
          
     def on_value_changed(self, combo):
         itr = combo.get_active_iter( )
+        val = combo.get_child( ).get_text( )
+
         if itr != None:
             n = combo.get_active( )
             self.tagbox.set_active(n)
-
         return
 
     def __init__(self):
@@ -111,6 +117,7 @@ class TagCombo(object):
         self.hbox.pack_start(self.value,True,True,2)
         self.val_model = val_model
         self.tagbox.set_active(0)
+        
 
 if __name__=='__main__':
     tc = TagCombo( )
