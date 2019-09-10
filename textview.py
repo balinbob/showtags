@@ -21,8 +21,11 @@ class TextBox(Gtk.ScrolledWindow):
 
     def set_text(self):
         with open(self.fname) as txtfile:
-            txt = txtfile.readlines( )
-        self.buffer.set_text(txt)
+            self.txt = txtfile.readlines( )
+        self.buffer.set_text(self.txt)
 
     def clear_text(self):
         self.buffer.set_text('')
+
+    def get_header(self):
+        return (self.txt.splitlines( )[:6])

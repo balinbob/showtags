@@ -54,15 +54,16 @@ class TagCombo(object):
             self.value.set_active(len(model)-1)
        
 
+    def on_val_entry_focus_out(self,entry,event,combo):
+        self.on_value_entered(entry,combo)
+        return
 
     def on_value_entered(self,entry,combo):
         val = entry.get_text( )
         self.val_model = combo.get_model( )
         tag_val = self.tagbox.get_child( ).get_text( )
         n = self.tagbox.get_active( )
-        print ('n is ', n)
         if n == -1:
-            print ('self.val_model ',self.val_model)
             self.val_model.append([val])
             self.value.set_active(len(self.val_model)-1)
             tag_model = self.tagbox.get_model( )
@@ -71,9 +72,32 @@ class TagCombo(object):
             self.val_model[n][0] = val
             self.value.set_active(n)
         self.tag_dict.update({ tag_val:val })
+        print (self.tag_dict)
         return
          
     def on_value_changed(self, combo):
+#        entry = combo.get_child( )
+#        val = entry.get_text( )
+#        self.val_model = combo.get_model( )
+#        tag_val = self.tagbox.get_child( ).get_text( )
+#        n = self.tagbox.get_active( )
+#        if n == -1:
+#            self.val_model.append([val])
+#            self.value.set_active(len(self.val_model)-1)
+#            tag_model = self.tagbox.get_model( )
+#            tag_model.append([self.tagbox.get_child( ).get_text( )])
+#        else:
+#            self.val_model[n][0] = val
+#            self.value.set_active(n)
+#        self.tag_dict.update({ tag_val:val })
+        
+#        print ( self.tag_dict )
+#        return
+
+
+
+
+
         itr = combo.get_active_iter( )
         val = combo.get_child( ).get_text( )
 
@@ -81,6 +105,52 @@ class TagCombo(object):
             n = combo.get_active( )
             self.tagbox.set_active(n)
         return
+
+    def set_header(self,header):
+        self.header = header
+
+    def on_item_chosen(self,item,entry):
+        print ('chosen!!!')
+#        print (item)
+        print (item)
+        print (item.get_label( ))
+        entry.set_text(item.get_label( ))
+
+    def on_menu(self,entry,event):
+        if event.button == 1:
+            if (event.state & Gtk.accelerator_get_default_mod_mask( )) == Gdk.ModifierType.META_MASK:
+                menu = Gtk.Menu( )
+                try:
+                    for line in self.header:
+                        item = Gtk.MenuItem(line)
+                        menu.append(item)
+                        item.connect('activate',self.on_item_chosen,entry)
+                except AttributeError:
+                    return
+                
+                menu.show_all( )
+                menu.popup(None,None,None,event,event.button,event.time)
+                return False
+
+    def add_to_popup(self,entry,popup):
+        popup.append(Gtk.SeparatorMenuItem( ))
+
+        if self.combo_entry.get_text( ) == 'genre':
+            header = ['Rock','Blues','Jazz','Jam','Funk']
+        else:
+            try:
+                header = self.header
+            except:
+                return
+        try:
+            for line in header:
+                item = Gtk.MenuItem(line)
+                popup.append(item)
+                item.connect('activate',self.on_item_chosen,entry)
+        except AttributeError:
+            return
+        popup.show_all( )
+
 
     def __init__(self):
         self.tagbox = Gtk.ComboBox.new_with_entry( )
@@ -97,12 +167,17 @@ class TagCombo(object):
         tag_entry = self.tagbox.get_child( )
         tag_entry.connect('activate', self.on_combo_entered,self.tagbox)
 
+#        val_entry.connect('button-press-event',self.on_menu)
+        val_entry.connect('populate-popup',self.add_to_popup)
+        val_entry.connect('focus-out-event',self.on_val_entry_focus_out,self.value)
+
         self.tagbox.set_entry_text_column(0)
         self.value.set_entry_text_column(0)
 
         self.hbox = Gtk.HBox( )
-        self.tags = ['artist','album','date','year','venue']
-        self.vals = ['---']*5
+        self.hbox.set_size_request(-1,-1)
+        self.tags = ['artist','album','date','year','genre','comment','venue']
+        self.vals = ['---']*7
         
         for tag in self.tags:
             self.combo_model.append([tag])
@@ -111,13 +186,16 @@ class TagCombo(object):
             val_model.append([val])
 #            val_model.append(['---'])
 
+        
+        self.tagbox.set_size_request(-1,26)
+        self.value.set_size_request(-1,26)
         self.tagbox.connect('changed',self.on_combo_changed)
         self.value.connect('changed', self.on_value_changed)
-        self.hbox.pack_start(self.tagbox,False,False,2)
+        self.hbox.pack_start(self.tagbox,True,True,2)
         self.hbox.pack_start(self.value,True,True,2)
         self.val_model = val_model
         self.tagbox.set_active(0)
-        
+        self.combo_entry = self.tagbox.get_child( )
 
 if __name__=='__main__':
     tc = TagCombo( )

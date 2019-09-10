@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # vim: set ft=python ts=4 sw=4 et ai:
 
 import gi
@@ -16,7 +16,7 @@ import re
 from mutagen import File
 import mutagen
 from combo import TagCombo
-
+import codecs
 
 
 class MyWindow(Gtk.Window):
@@ -95,12 +95,12 @@ class MyWindow(Gtk.Window):
         self.connect('destroy',Gtk.main_quit)
         
         self.mainbox = Gtk.VBox( )
-        self.mainbox.set_size_request(600,860)
+        self.mainbox.set_size_request(600,220)
 #        self.add(self.mainbox)
         self.tagview = TagView( )
         self.model = Model( )
         self.tagview.set_model(self.model)
-        self.tagview.set_size_request(540,640)
+#        self.tagview.set_size_request(540,240)
         
         self.scrlwindow = ScrollArea( )
         self.scrlwindow.add(self.tagview)
@@ -125,7 +125,7 @@ class MyWindow(Gtk.Window):
         vbox2.set_size_request(200,-1)
         vbox3.set_size_request(200,-1)
         grid = Gtk.Grid( )
-        grid.set_size_request(600,140)
+        grid.set_size_request(600,-1)
         vbox2.pack_start(self.flac_button,True,True,0)
         vbox2.pack_start(self.text_button,True,True,0)
         vbox2.pack_start(self.reload_button,True,True,0)
@@ -134,7 +134,7 @@ class MyWindow(Gtk.Window):
         grid.attach_next_to(vbox3,vbox2,Gtk.PositionType.RIGHT,2,2)
         self.text_button.set_sensitive(False)
         hbox = Gtk.HBox( )
-        hbox.pack_start(grid,False,False,0)
+        hbox.pack_start(grid,False,False, 2)
         vbox1.pack_start(Gtk.Label(label='Characters to Remove from All Titles'),False,True,4)
         removables = Gtk.Entry( )
         removables.set_size_request(-1,22)
@@ -167,7 +167,7 @@ class MyWindow(Gtk.Window):
         clearall_button = Gtk.Button(label='Clear All')
         clearall_button.connect('clicked',self.on_clear_btn,self.flac_button)
         vbox2.pack_start(clearall_button,False,True,0)
-        self.mainbox.pack_start(hbox,False,False,0)
+        self.mainbox.pack_start(hbox,True,True,0)
 
         stack = Gtk.Stack()
         stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -178,6 +178,7 @@ class MyWindow(Gtk.Window):
         switcher.set_stack(stack)
         
         self.textbox = TextBox( )
+        self.textbox.set_size_request(-1, -1)
         self.textbox.buffer.connect('changed',self.text_changed)
         stack.add_titled(self.mainbox,'mainbox','Main')
         stack.add_titled(self.textbox,'textbox','Text')
@@ -190,7 +191,7 @@ class MyWindow(Gtk.Window):
         self.reload_button.set_sensitive(False)
         self.flac_button.set_sensitive(True)
         self.tc = TagCombo( )
-        vbox.pack_end(self.tc.hbox,False,False,2)
+        vbox.pack_start(self.tc.hbox,True,False,2)
         vbox1.set_sensitive(False)
         self.vbox1 = vbox1
         self.vbox2 = vbox2
@@ -222,6 +223,12 @@ class MyWindow(Gtk.Window):
         text = buf.get_text(buf.get_start_iter( ),
                            buf.get_end_iter( ),
                            True)
+        
+
+        
+        self.header = text.splitlines( )[:6]
+        self.tc.set_header(self.header)
+
         fp = NTF(mode='w',delete=True)
         fp.write(text)
         fp.flush( )
@@ -241,6 +248,23 @@ class MyWindow(Gtk.Window):
 
         fp.close( )
         self.reload_button.set_sensitive(False)
+
+    def detect_encoding(self,textfile):
+        encodings = ['utf-8', 'windows-1250', 'windows-1252', 'ISO-8859','ascii']
+        for e in encodings:
+            try:
+                fh = codecs.open(textfile, 'r', encoding=e)
+                fh.read()
+                fh.seek(0)
+            except UnicodeDecodeError:
+                print('got unicode error with %s , trying different encoding' % e)
+            else:
+                print('opening the file with encoding:  %s ' % e)
+                break
+        return (e)
+
+
+
 
     def choose_txt(self,data):
         dialog = FileBrowser('Choose Text File')
@@ -269,8 +293,13 @@ class MyWindow(Gtk.Window):
                 if title:
                     s = str(n+1).zfill(2)
                     self.model.append(['',s,title,title])
-        with open(self.text[0],'r') as txtfile:
+        e = self.detect_encoding(self.text[0])
+        with open(self.text[0],'r',encoding=e) as txtfile:
             self.text = txtfile.read( )
+        
+        self.header = self.text.splitlines( )[:6]
+        self.tc.set_header(self.header)
+
 
         self.textbox.buffer.set_text(self.text)
         
@@ -282,6 +311,7 @@ class MyWindow(Gtk.Window):
 
     def choose_folder(self,data):
         dialog = FileBrowser('Choose FLAC Folder')
+        dialog.set_transient_for(self)
         resp = dialog.run( )
         if resp == Gtk.ResponseType.OK:
             fn = dialog.get_filename( )
@@ -358,7 +388,7 @@ class MyWindow(Gtk.Window):
 class ScrollArea(Gtk.ScrolledWindow):
     def __init__(self):
         Gtk.ScrolledWindow.__init__(self)
-        self.set_size_request(400,700)
+        self.set_size_request(400,500)
         
 
 
@@ -367,7 +397,7 @@ class TagView(Gtk.TreeView):
     def __init__(self):
         self.tagvalues = Model( )
         Gtk.TreeView.__init__(self, model=self.tagvalues)
-        self.set_size_request(320,600)
+        self.set_size_request(320,-1)
         self.limit = 40
         self.connect('button-press-event',self.on_tagview_clicked,self)
 
@@ -462,11 +492,12 @@ class FileBrowser(Gtk.FileChooserDialog):
         self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
 
 
-
 class TitleFinder(object):
     def __init__(self,textfile_name):
         self.textfile = textfile_name
-        
+    
+
+    #fixme
     def find_titles(self):
         titles = check_output(['find_titles',self.textfile])
         title_list = titles.splitlines( )
