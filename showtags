@@ -277,6 +277,7 @@ class MyWindow(Gtk.Window):
             dialog.destroy( )
             return
         
+
         tf = TitleFinder(self.text[0])
         self.titles = tf.find_titles( )
         columns = self.tagview.get_columns( )
@@ -421,7 +422,8 @@ class TagView(Gtk.TreeView):
             item.connect('activate', self.on_remove)
             menu.append(item)
             menu.show_all( )
-            menu.popup_at_pointer( )
+            menu.popup(None,None,None,None,event.button,event.time)
+#            menu.popup_at_pointer( )
             return
 
 
@@ -501,6 +503,8 @@ class TitleFinder(object):
     def find_titles(self):
         titles = check_output(['find_titles',self.textfile])
         title_list = titles.splitlines( )
+        
+
         self.titles = [title.decode( ) for title in title_list]
         del titles
         del title_list
