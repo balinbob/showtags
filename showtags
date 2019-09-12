@@ -422,9 +422,14 @@ class TagView(Gtk.TreeView):
             item.connect('activate', self.on_remove)
             menu.append(item)
             menu.show_all( )
-            menu.popup(None,None,None,None,event.button,event.time)
-#            menu.popup_at_pointer( )
-            return
+            try:
+                menu.popup_at_pointer(event)
+                print ('one')
+            except:
+                menu.popup(None,None,None,None,event.button,event.time)
+                print ('two')
+            finally:
+                return
 
 
     def on_changed(self, sel):

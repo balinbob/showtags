@@ -76,28 +76,6 @@ class TagCombo(object):
         return
          
     def on_value_changed(self, combo):
-#        entry = combo.get_child( )
-#        val = entry.get_text( )
-#        self.val_model = combo.get_model( )
-#        tag_val = self.tagbox.get_child( ).get_text( )
-#        n = self.tagbox.get_active( )
-#        if n == -1:
-#            self.val_model.append([val])
-#            self.value.set_active(len(self.val_model)-1)
-#            tag_model = self.tagbox.get_model( )
-#            tag_model.append([self.tagbox.get_child( ).get_text( )])
-#        else:
-#            self.val_model[n][0] = val
-#            self.value.set_active(n)
-#        self.tag_dict.update({ tag_val:val })
-        
-#        print ( self.tag_dict )
-#        return
-
-
-
-
-
         itr = combo.get_active_iter( )
         val = combo.get_child( ).get_text( )
 
@@ -106,14 +84,26 @@ class TagCombo(object):
             self.tagbox.set_active(n)
         return
 
+    def popup_both(self,widget):
+        self.tagbox.popup( )
+        self.value.popup( )
+
+
+#       the first signals get eaten by one dropdown,
+#       so they have to be repeated for both I guess.  <doh>
+    def popdown_left(self,widget):
+        widget.popdown( )
+         
+
+    def popdown_right(self,widget):
+        widget.popdown( )
+        
+        
+
     def set_header(self,header):
         self.header = header
 
     def on_item_chosen(self,item,entry):
-        print ('chosen!!!')
-#        print (item)
-        print (item)
-        print (item.get_label( ))
         entry.set_text(item.get_label( ))
 
     def on_menu(self,entry,event):
@@ -186,12 +176,20 @@ class TagCombo(object):
             val_model.append([val])
 #            val_model.append(['---'])
 
-        
+       
+        button = Gtk.Button( )
+        button.set_size_request(10,10)
+        button.connect('clicked',self.popup_both)
+        button.connect('clicked',self.popdown_left)
+        button.connect('clicked',self.popdown_right)
         self.tagbox.set_size_request(-1,26)
         self.value.set_size_request(-1,26)
         self.tagbox.connect('changed',self.on_combo_changed)
         self.value.connect('changed', self.on_value_changed)
         self.hbox.pack_start(self.tagbox,True,True,2)
+        
+        self.hbox.pack_start(button,False,False,2)
+
         self.hbox.pack_start(self.value,True,True,2)
         self.val_model = val_model
         self.tagbox.set_active(0)
