@@ -91,12 +91,12 @@ class TagCombo(object):
 
 #       the first signals get eaten by one dropdown,
 #       so they have to be repeated for both I guess.  <doh>
-    def popdown_left(self,widget):
-        widget.popdown( )
+#    def popdown_left(self,widget):
+#        self.tagbox.popdown( )
          
 
-    def popdown_right(self,widget):
-        widget.popdown( )
+#    def popdown_right(self,widget):
+#        self.value.popdown( )
         
         
 
@@ -180,8 +180,8 @@ class TagCombo(object):
         button = Gtk.Button( )
         button.set_size_request(10,10)
         button.connect('clicked',self.popup_both)
-        button.connect('clicked',self.popdown_left)
-        button.connect('clicked',self.popdown_right)
+#        button.connect('clicked',self.popdown_left)
+#        button.connect('clicked',self.popdown_right)
         self.tagbox.set_size_request(-1,26)
         self.value.set_size_request(-1,26)
         self.tagbox.connect('changed',self.on_combo_changed)

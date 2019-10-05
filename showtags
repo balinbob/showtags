@@ -191,7 +191,7 @@ class MyWindow(Gtk.Window):
         self.reload_button.set_sensitive(False)
         self.flac_button.set_sensitive(True)
         self.tc = TagCombo( )
-        vbox.pack_start(self.tc.hbox,True,False,2)
+        vbox.pack_start(self.tc.hbox,False,False,2)
         vbox1.set_sensitive(False)
         self.vbox1 = vbox1
         self.vbox2 = vbox2
@@ -392,20 +392,32 @@ class ScrollArea(Gtk.ScrolledWindow):
         self.set_size_request(400,500)
         
 
-
-
 class TagView(Gtk.TreeView):
     def __init__(self):
         self.tagvalues = Model( )
         Gtk.TreeView.__init__(self, model=self.tagvalues)
         self.set_size_request(320,-1)
         self.limit = 40
-        self.connect('button-press-event',self.on_tagview_clicked,self)
+        self.connect('button-press-event',self.on_tagview_clicked)
+        self.connect('key-press-event',self.on_delete)
 
-    def on_tagview_clicked(self,d1,event=None,d3=None):
+
+    def on_delete(self,tagview,event):
+        if event.type == Gdk.EventType.KEY_PRESS and \
+                        event.keyval == 0xffff:
+            sel = self.get_selection( )
+            model,itr = sel.get_selected( )
+            while True:
+                nxt_iter = model.iter_next(itr)
+                if not nxt_iter:
+                    break
+                model[itr][2] = model[nxt_iter][2]
+                itr = nxt_iter
+            model.remove(itr)
+
+    def on_tagview_clicked(self,tagview,event):
         if event.type == Gdk.EventType.BUTTON_PRESS and \
                         event.button == 3:
-            
             
             pthinfo = self.get_path_at_pos(event.x,event.y)
             path = pthinfo[0]
@@ -422,14 +434,8 @@ class TagView(Gtk.TreeView):
             item.connect('activate', self.on_remove)
             menu.append(item)
             menu.show_all( )
-            try:
-                menu.popup_at_pointer(event)
-                print ('one')
-            except:
-                menu.popup(None,None,None,None,event.button,event.time)
-                print ('two')
-            finally:
-                return
+            menu.popup(None,None,None,None,event.button,event.time)
+            print ('two')
 
 
     def on_changed(self, sel):
