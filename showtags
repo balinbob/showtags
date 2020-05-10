@@ -250,7 +250,7 @@ class MyWindow(Gtk.Window):
         self.reload_button.set_sensitive(False)
 
     def detect_encoding(self,textfile):
-        encodings = ['utf-8', 'windows-1250', 'windows-1252', 'ISO-8859','ascii']
+        encodings = ['utf-8', 'windows-1250', 'windows-1252', 'ISO-8859','latin1','latin2','ascii']
         for e in encodings:
             try:
                 fh = codecs.open(textfile, 'r', encoding=e)
@@ -365,7 +365,8 @@ class MyWindow(Gtk.Window):
             
         for mf in mfs:
             title = mf.get('title',[None])
-            num = mf.get('tracknumber',[None])
+#            num = mf.get('tracknumber',[None])
+            num = [None]
             if title[0]:
                 self.model[itr][2] = mf['title'][0]
                 self.model[itr][3] = mf['title'][0]

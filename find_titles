@@ -19,6 +19,7 @@ dntn() {
 	local -i dn=0
 	local -i m=0 d=0 n=0 current=$1 total=0
 	for d in $THREE; do
+		echo $THREE
 		let dn++
 		for t in $(seq $d); do
 			htn[$dn]=$t
@@ -177,12 +178,12 @@ find_titles() {
 		line=`echo "$line"|sed -r 's/^-//'`
 		# filter out md5 lines
 		line=`echo "$line"|grep -Ev '[0123456789abcdef]{4,9}\s\*'`
+		
 		if [ -n $line ] && [ ${#line} -gt 2 ]; then
 			let nn++
 			[ -n $THREE ] && no=$(dntn $nn)
 			[ -z $THREE ] && no=$(printf '%02d' $nn)
 #			echo -e "${WH}${no}]${NC}  $line"
-			
 
 			textlines+="$line
 "
