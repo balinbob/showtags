@@ -1,0 +1,73 @@
+#!/usr/bin/python3
+# vim: set ts=4 sw=4 et ai:
+#
+# putart imagefile audiofiles...
+# GPL2 2022 Bob Allred
+# embed an image (cover) in a compressed audio file (.flac, .mp3)
+
+import sys
+import mymagic
+from os import path
+from mutagen import File, flac
+from mutagen import MutagenError
+
+picture = flac.Picture()
+
+def myhelp():
+    print('%s imagefile audiofiles...' % sys.argv[0])
+    print('embed cover art into compressed audio file(s) [flac, mp3]')
+    print('putart GPL2 2022 Bob Allred')
+
+def img_load(fname):
+    try:
+        with open(fname, 'rb') as fd:
+            pdata = fd.read()
+    except Exception as e:
+        print('cannot open %s as an image file!' % fname)
+        sys.exit(1)
+    return pdata
+
+def tags_load(fname):
+    try:
+        mf = File(fname)
+    except MutagenError as e:
+        print(e)
+        sys.exit(1)
+    return mf
+
+if not len(sys.argv[1:]) > 1:
+    myhelp()
+    sys.exit(0)
+
+for argn, arg in enumerate(sys.argv[1:]):
+    if argn == 0:
+        m = mymagic.magic(arg, True)
+        if m.split('/')[0] == 'image':
+            picture.data = img_load(arg)
+            picture.mime = m
+            picture.type = 3
+        else:
+            print('not an image file: %s: %s' % (arg, m))
+            sys.exit(1)
+    else:
+        m = mymagic.magic(arg, True)
+        if m.split('/')[0] != 'audio': 
+            print('error opening as audio file: %s' % arg)
+            sys.exit(1)
+        try:
+            mf = tags_load(arg)
+        except MutagenError as e:
+            print(e)
+            sys.exit(1)
+        try:
+            mf.clear_pictures()
+            mf.add_picture(picture)
+        except Exception as e:
+            print('error editing embedded image')
+        try:
+            mf.save()
+        except Exception as e:
+            print('error saving tags to: %s' % arg)
+            sys.exit(1)
+print('success editing %d audio files!' % (argn))
+sys.exit(0)

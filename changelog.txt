@@ -1,0 +1,7 @@
+# showtags v2.0 GPL3 -2022 Bob Allred
+# changelog - 2022-04-13
+
+# 2022-04-09	new: artwork tagging (experimental)
+# 2022-04-13  	fix: filenames update in listview on rename
+#		(can work with files after renaming)
+#

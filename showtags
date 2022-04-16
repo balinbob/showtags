@@ -2,18 +2,23 @@
 # vim: set ft=python ts=4 sw=4 et ai:
 
 import os
+import sys
 import re
 import codecs
 from subprocess import check_output
 from textview import TextBox
 from tempfile import NamedTemporaryFile as NTF
 from mutagen import File
+from mutagen.flac import Picture
+from dragbox import DropImage
 from combo import TagCombo
 import gi
+from glob import glob
 from importlib import import_module
 gi.require_version('Gtk', '3.0')
 Gtk = import_module('gi.repository.Gtk')
 Gdk = import_module('gi.repository.Gdk')
+GdkPixbuf = import_module('gi.repository.GdkPixbuf')
 # from gi.repository import Gtk
 # from gi.repository import Gdk
 
@@ -63,29 +68,39 @@ class MyWindow(Gtk.Window):
         pattern = self.rename_pattern.get_text()
         fnames = [row[0] for row in self.model]
         pathnames = [os.path.join(self.showpath, fname) for fname in fnames]
-        for pname in pathnames:
+
+        for n, pname in enumerate(pathnames):
+            if not pname.endswith('.flac'):
+                pname += '.flac'
+            # print(pname, '   ', pattern)
             s = check_output(['pytaggr',
                               '--noconfirm',
                               '--tag2fn',
                               pattern,
                               pname])
-            print(s.decode())
-        '''
-        print(check_output(['pytaggr',
-                                '--noconfirm',
-                                '--tag2fn',
-                                pattern,
-                                pname]))
-        '''
+            # print(s.decode())
+            s = s.decode()
+            s = s.splitlines()[0]
+            self.model[n][0] = s 
+            print(s)
 
+    
     def do_tagging(self, widget):
         print('tagging')
+        picture = Picture()
+        if self.coverart.filename:
+            picture.type = 3
+            picture.mime = self.coverart.mime
+            picture.data = self.coverart.get_bytes() 
         for row in self.model:
             print(row[0])
             fpath = os.path.join(os.path.realpath(self.showpath), row[0])
             track = row[1]
             title = row[2]
-            print(os.path.exists(fpath))
+            print(fpath)
+            if not fpath.endswith('.flac'):
+                fpath += '.flac'
+            
             if os.path.exists(fpath) and track and title:
                 mf = File(fpath)
                 mf['tracknumber'] = track
@@ -93,24 +108,35 @@ class MyWindow(Gtk.Window):
 
                 for item in self.tc.tag_dict:
                     val = self.tc.tag_dict[item]
-                    if val != '' and val != '---':
+                    if val != '---':
                         mf[item] = val
-
+                # a folder.jpg etc has been dropped
+                if picture:
+                    mf.clear_pictures()
+                    mf.add_picture(picture)
                 mf.save()
-                print('tagged!')
         print('done')
 
-    def __init__(self):
+    def __init__(self, argv):
         Gtk.Window.__init__(self, title='ShowTags')
         self.connect('destroy', Gtk.main_quit)
-
+        folder = ''
+        cwd = os.getcwd()
+        files = glob(cwd + '/*.flac')
+        if files:
+            folder = cwd
+        
+        if len(argv) > 1:
+            if os.path.isdir(argv[1]):
+                folder = argv[1]
+        self.argv = argv
         self.mainbox = Gtk.VBox()
         self.mainbox.set_size_request(600, 220)
-#        self.add(self.mainbox)
         self.tagview = TagView()
+        self.coverart = CoverArt()
+        self.coverbox = self.coverart.frame
         self.model = Model()
         self.tagview.set_model(self.model)
-#        self.tagview.set_size_request(540,240)
 
         self.scrlwindow = ScrollArea()
         self.scrlwindow.add(self.tagview)
@@ -120,11 +146,11 @@ class MyWindow(Gtk.Window):
         self.text_button.connect('clicked', self.choose_txt)
 
         self.flac_button = Gtk.Button(label='FLAC folder')
-        self.flac_button.connect('clicked', self.choose_folder)
+        self.flac_button.connect('clicked', self.choose_folder, folder)
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked', self.rescan)
-        self.reload_button.set_tooltip_text('Rescan for titles in \
-                                            the text in the TextView')
+        self.reload_button.set_tooltip_text('Rescan for titles from\n\
+    the text in the TextView')
         self.tagging = Gtk.Button(label='Tag')
         self.tagging.connect('clicked', self.do_tagging)
         self.tagging.set_sensitive(False)
@@ -155,17 +181,17 @@ class MyWindow(Gtk.Window):
         removables.set_size_request(-1, 22)
         removables.connect('changed', self.removables_changed)
         vbox1.pack_start(removables, False, True, 2)
-        removables.set_tooltip_text('Type a string of single \
-                                    characters to remove \
-                                    from all titles in which they exist')
+        removables.set_tooltip_text('Type a string of single\n\
+    characters to remove\n\
+    from all titles in which they exist')
         self.removables = removables
 
         strings = Gtk.Entry()
         strings.set_size_request(-1, 20)
         strings.connect('activate', self.on_string_entry)
-        strings.set_tooltip_text('Type any word or group of characters \
-                                 and press Return to remove them from all\
-                                 titles in which they exist')
+        strings.set_tooltip_text('Type any word or group of characters\n\
+    and press Return to remove them from all\n\
+    titles in which they exist')
         self.strings = strings
 
         vbox1.pack_start(Gtk.Label(label='Strings to Remove'), False, True, 4)
@@ -180,13 +206,14 @@ class MyWindow(Gtk.Window):
         rename_pattern.connect('focus-out-event', self.on_pattern_focus_out)
         vbox3.pack_start(rename_pattern, False, False, 0)
         self.rename_pattern = rename_pattern
-        rename_pattern.set_tooltip_text('pattern by which tags will be\
-                                        translated into filenames\
-                                        %n = tracknumber\
-                                        %t = title\
-                                        %a = artist\
-                                        %b = album\
-                                        %d = date')
+        rename_pattern.set_tooltip_text('\
+    pattern by which tags will be\n\
+    translated into filenames:\n\
+    %n = tracknumber\n\
+    %t = title\n\
+    %a = artist\n\
+    %b = album\n\
+    %d = date')
 
         clearall_button = Gtk.Button(label='Clear All')
         clearall_button.connect('clicked', self.on_clear_btn, self.flac_button)
@@ -206,6 +233,7 @@ class MyWindow(Gtk.Window):
         self.textbox.buffer.connect('changed', self.text_changed)
         stack.add_titled(self.mainbox, 'mainbox', 'Main')
         stack.add_titled(self.textbox, 'textbox', 'Text')
+        stack.add_titled(self.coverbox, 'coverbox', 'Artwork')
         stack.connect('notify::visible-child', self.switched)
         vbox = Gtk.VBox()
         vbox.pack_start(switcher, False, False, 2)
@@ -327,8 +355,11 @@ class MyWindow(Gtk.Window):
             self.tagging.set_sensitive(True)
             self.rename_button.set_sensitive(True)
 
-    def choose_folder(self, data):
+    def choose_folder(self, widget, folder):
         dialog = FileBrowser('Choose FLAC Folder')
+        if folder:
+            dialog.set_current_folder(folder)
+
         dialog.set_transient_for(self)
         resp = dialog.run()
         if resp == Gtk.ResponseType.OK:
@@ -344,6 +375,7 @@ class MyWindow(Gtk.Window):
         filename = Gtk.CellRendererText()
         title = Gtk.CellRendererText()
         number = Gtk.CellRendererText()
+        
         title.set_property('editable', True)
         title.connect('edited', self.on_edited)
         col = Gtk.TreeViewColumn('filenames', filename, text=0)
@@ -360,6 +392,10 @@ class MyWindow(Gtk.Window):
             if flac:
                 s = str(n+1).zfill(2)
                 self.model.append([flac, s, '', ''])
+                print(flac)
+
+        self.tagging.set_sensitive(True)
+        self.rename_button.set_sensitive(True)
 
         self.text_button.set_sensitive(True)
         self.flac_button.set_sensitive(False)
@@ -378,7 +414,8 @@ class MyWindow(Gtk.Window):
         mfs = []
         for flac in flacs:
             f = os.path.join(os.path.realpath(self.showpath), flac)
-            mfs.append(File(f))
+            if os.path.isfile(f):
+                mfs.append(File(f))
 
         for mf in mfs:
             title = mf.get('title', [None])
@@ -386,11 +423,12 @@ class MyWindow(Gtk.Window):
             num = [None]
             if title[0]:
                 self.model[itr][2] = mf['title'][0]
-                self.model[itr][3] = mf['title'][0]
+                # self.model[itr][0] = mf['title'][0]
             if num[0]:
                 self.model[itr][1] = mf['tracknumber'][0]
             itr = self.model.iter_next(itr)
-
+            self.setcover(mf)
+        # dropdowns
         key_model = self.tc.tagbox.get_model()
         val_model = self.tc.value.get_model()
         tags = []
@@ -404,6 +442,104 @@ class MyWindow(Gtk.Window):
                 val_model.append([mf[key][0]])
 
 
+    def setcover(self, mf):
+        self.coverart.set_flac(mf)
+
+
+class CoverArt(DropImage):
+    pixbuf = None
+    first_image = None
+    displayed = False
+    homogenous = None
+    filename = None
+
+    def __init__(self, mf=None):
+        DropImage.__init__(self)
+        self.pixbuf = self.get_cover_from_flac(mf)
+        self.connect('dropped', self.on_file_dropped)
+
+    def on_file_dropped(self, widget, mime, fpath):
+        print(mime)
+        print(self.mime)
+        self.mime = mime
+        print(fpath, 'hey!')
+        if mime == 'audio/flac':
+            mf = File(fpath)
+            if self.flac_has_picture(mf):
+                self.set_flac(mf)
+            else:
+                self.clear()
+        elif mime.split('/')[0] == 'image':
+            self.pixbuf = self.get_pixbuf()
+            print(type(self.pixbuf))
+            self.pixbuf = self.pixbuf.scale_simple(
+                    600, 
+                    600, 
+                    GdkPixbuf.InterpType.BILINEAR)
+            self.set_from_pixbuf(self.pixbuf)
+            # artwork that has a filename can be used to tag
+            # artwork that came from a flac doesn't work yet
+            self.filename = fpath
+
+    def flac_has_picture(self, mf=None):
+        if not mf:
+            return False
+        elif not mf.pictures:
+            return False
+        else:
+            return True
+
+    def set_flac(self, mf=None, itr=None):
+        if not self.flac_has_picture(mf):
+            return
+        else:
+            self.homogenous = self.are_all_the_same(mf)
+            print(self.homogenous)
+        if not self.homogenous:
+            print('clearing')
+            self.clear()
+            self.first_image = None
+            self.is_displayed = False
+        if self.displayed:
+            print('pb already set')
+            return
+        else:
+            self.pixbuf = self.get_cover_from_flac(mf)
+            if not self.pixbuf:
+                return
+            self.pixbuf = self.pixbuf.scale_simple(
+                    600, 
+                    600, 
+                    GdkPixbuf.InterpType.BILINEAR)
+            print('setting')
+            self.set_from_pixbuf(self.pixbuf)
+            self.displayed = True
+
+    def get_cover_from_flac(self, mf):
+        if not mf:
+            return None
+        elif not mf.pictures:
+            return None
+        elif not len(mf.pictures[0].data):
+            return None
+        else:
+            pic = mf.pictures[0]
+            pbloader = GdkPixbuf.PixbufLoader()
+            pbloader.write(pic.data)
+            pbloader.close()
+            pixbuf = pbloader.get_pixbuf()
+            return pixbuf
+
+    def are_all_the_same(self, mf):
+        if not self.first_image:
+            self.first_image = mf.pictures[0]
+            return True
+        elif mf.pictures[0] != self.first_image:
+            return False
+        else:
+            return True
+
+
 class ScrollArea(Gtk.ScrolledWindow):
     def __init__(self):
         Gtk.ScrolledWindow.__init__(self)
@@ -411,13 +547,31 @@ class ScrollArea(Gtk.ScrolledWindow):
 
 
 class TagView(Gtk.TreeView):
+
     def __init__(self):
         self.tagvalues = Model()
         Gtk.TreeView.__init__(self, model=self.tagvalues)
         self.set_size_request(320, -1)
-        self.limit = 40
+        self.limit = 99
         self.connect('button-press-event', self.on_tagview_clicked)
         self.connect('key-press-event', self.on_delete)
+        
+        # if len(argv) > 1:
+        #     try:
+        #         files = glob(argv[1] + '/*.flac')
+        #     except OSError:
+        #         print(e)
+                
+        #     tvpath = Gtk.TreePath(0)
+        #     # itr = self.tagvalues.get_itr_first()
+        #     # print(itr)
+        #     for n, fname in enumerate(files):
+        #         self.tagvalues.append(fname,['','',''])
+        #         print(n, fname)
+                
+
+
+
 
     def on_delete(self, tagview, event):
         if event.type == Gdk.EventType.KEY_PRESS and \
@@ -537,7 +691,7 @@ class TitleFinder(object):
         return self.titles
 
 
-win = MyWindow()
+win = MyWindow(sys.argv)
 win.connect('destroy', Gtk.main_quit)
 
 win.show_all()

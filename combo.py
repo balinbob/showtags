@@ -34,9 +34,6 @@ class TagCombo(object):
             self.value.append(['---'])
 
     
-
-
-
     def on_combo_entered(self, entry,tagcombo):
         item = entry.get_text( )
         model = tagcombo.get_model( )
@@ -63,7 +60,9 @@ class TagCombo(object):
         self.val_model = combo.get_model( )
         tag_val = self.tagbox.get_child( ).get_text( )
         n = self.tagbox.get_active( )
-        if n == -1:
+        if val == '---':
+            pass
+        elif n == -1:
             self.val_model.append([val])
             self.value.set_active(len(self.val_model)-1)
             tag_model = self.tagbox.get_model( )
@@ -71,7 +70,9 @@ class TagCombo(object):
         else:
             self.val_model[n][0] = val
             self.value.set_active(n)
-        self.tag_dict.update({ tag_val:val })
+        
+        if val != '---':
+            self.tag_dict.update({ tag_val:val })
         print (self.tag_dict)
         return
          
