@@ -8,4 +8,5 @@ bash:  		find_titles
 # print out setlist song titles from an etree-style info.txt file
 # find_titles xx1999-09-90.txt
 python3:	pytaggr
-# tag audio files using the mutagen library
+# tag audio files using the mutagen library, tag from filename, rename from tag, etc
+
