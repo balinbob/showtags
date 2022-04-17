@@ -4,4 +4,12 @@
 # 2022-04-09	new: artwork tagging (experimental)
 # 2022-04-13  	fix: filenames update in listview on rename
 #		(can work with files after renaming)
-#
+# 2022-04-13    fix: can tag without loading text file
+# 2022-04-13	fix: made sure that no existing tags were accidentally deleted
+# 2022-04-13	fix: opening a folder ending in '.flac' no longer tries to open it as a flac file
+# 2022-04-13	new: loading showtags with flac files in the current directory
+#  		     will default the folder chooser to that directory
+# 2022-04-13	new: loading showtags with a path on the command-line defaults
+#                    the chooser to that folder
+# 2022-04-16	fix: added helper to adapt to whichever 'magic' package is
+#		     installed

@@ -2,14 +2,14 @@
 
 import gi
 import sys
-import magic
+from mymagic import magic
 from urllib.parse import urlparse, unquote_plus
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf
 from gi.repository import GObject
 
 target_entry = Gtk.TargetEntry.new('text/uri-list', 0, 0)
-mime = magic.Magic(mime=True)
+# mime = magic.Magic(mime=True)
 
 class MyWin(Gtk.Window):
     def __init__(self):
@@ -61,7 +61,8 @@ class DropImage(Gtk.Image):
     def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):        
         uri = data.get_uris()[0]
         self.filepath = unquote_plus(urlparse(uri).path)
-        self.mime = mime.from_file(self.filepath)
+        # self.mime = mime.from_file(self.filepath)
+        self.mime = magic(self.filepath, True)
         mime0, mime1 = self.mime.split('/')[0], self.mime.split('/')[1]
         # print(filepath)
         # print(m)
