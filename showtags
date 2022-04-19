@@ -52,8 +52,6 @@ class MyWindow(Gtk.Window):
         self.text_button.set_sensitive(False)
         self.tagging.set_sensitive(False)
         self.rename_button.set_sensitive(False)
-#        self.strings.set_sensitive(False)
-#        self.removables.set_sensitive(False)
         self.vbox1.set_sensitive(False)
 
         for col in self.tagview.get_columns():
@@ -75,18 +73,15 @@ class MyWindow(Gtk.Window):
         for n, pname in enumerate(pathnames):
             if not pname.endswith('.flac'):
                 pname += '.flac'
-            # print(pname, '   ', pattern)
             s = check_output(['pytaggr',
                               '--noconfirm',
                               '--justify',
                               '--tag2fn',
                               pattern,
                               pname])
-            # print(s.decode())
             s = s.decode()
             s = s.splitlines()[0]
             self.model[n][0] = s 
-            print(s)
 
     
     def do_tagging(self, widget):
@@ -127,16 +122,12 @@ class MyWindow(Gtk.Window):
         print('done')
 
     def choose_txt(self, widget, folder, data=None):
-        print('data is:  ', data)
-        
         self.textfile_chooser.choose_txt(folder)
-        print('self.text is: ', self.text)
         if self.text:
             self.load_text_file()
 
     def choose_folder(self, widget, folder=''):
         self.folder_chooser.choose_folder(folder)
-        print('foldre: ', folder)
         if self.flacs:
             self.load_files_into_listview()
     
@@ -287,8 +278,6 @@ class MyWindow(Gtk.Window):
         self.rename_button = rename_button
 
     def on_pattern_focus_out(self, widget, event):
-        print(widget.get_text())
-
         return False
 
     def text_changed(self, d1, d2=None):
@@ -343,7 +332,6 @@ class MyWindow(Gtk.Window):
                 print('got unicode error with %s,\
                       trying different encoding' % e)
             else:
-                print('opening the file with encoding:  %s ' % e)
                 break
         return (e)
 
@@ -391,26 +379,7 @@ class MyWindow(Gtk.Window):
             self.vbox1.set_sensitive(True)
             self.tagging.set_sensitive(True)
             self.rename_button.set_sensitive(True)
-
-        '''
-    def choose_folder(self, widget, folder):
-        dialog = FileBrowser(self, 'Choose FLAC Folder')
-        if folder:
-            dialog.set_current_folder(folder)
-
-        dialog.set_transient_for(self)
-        resp = dialog.run()
-        if resp == Gtk.ResponseType.OK:
-            fn = dialog.get_filename()
-            self.flacs = [f for f in os.listdir(fn) if f.endswith('.flac')]
-            self.flacs.sort()
-            self.showpath = fn
-        else:
-            dialog.destroy()
-            return
-        dialog.destroy()
-        '''
-
+    
     def load_files_into_listview(self):
         filename = Gtk.CellRendererText()
         title = Gtk.CellRendererText()
@@ -422,10 +391,8 @@ class MyWindow(Gtk.Window):
         col.set_sort_column_id(0)
         self.tagview.append_column(col)
         col = Gtk.TreeViewColumn('track #', number, text=1)
-#        col.set_visible(False)
         self.tagview.append_column(col)
         col = Gtk.TreeViewColumn('title', title, text=2)
-#        col.set_visible(False)
         self.tagview.append_column(col)
         self.model = self.tagview.get_model()
         for n, flac in enumerate(self.flacs):
@@ -439,10 +406,8 @@ class MyWindow(Gtk.Window):
 
         self.text_button.set_sensitive(True)
         self.flac_button.set_sensitive(False)
-#        self.reload_button.set_sensitive(True)
         self.clearall_button.set_sensitive(True)
         self.read_tags(self.flacs)
-        print(self.model[1][2])
         if self.model[1][2]:
             self.rename_button.set_sensitive(True)
 
@@ -499,10 +464,7 @@ class CoverArt(DropImage):
         self.connect('dropped', self.on_file_dropped)
 
     def on_file_dropped(self, widget, mime, fpath):
-        print(mime)
-        print(self.mime)
         self.mime = mime
-        print(fpath, 'hey!')
         if mime == 'audio/flac':
             mf = File(fpath)
             if self.flac_has_picture(mf):
@@ -536,12 +498,10 @@ class CoverArt(DropImage):
             self.homogenous = self.are_all_the_same(mf)
             print(self.homogenous)
         if not self.homogenous:
-            print('clearing')
             self.clear()
             self.first_image = None
             self.is_displayed = False
         if self.displayed:
-            print('pb already set')
             return
         else:
             self.pixbuf = self.get_cover_from_flac(mf)
@@ -596,23 +556,6 @@ class TagView(Gtk.TreeView):
         self.connect('button-press-event', self.on_tagview_clicked)
         self.connect('key-press-event', self.on_delete)
         
-        # if len(argv) > 1:
-        #     try:
-        #         files = glob(argv[1] + '/*.flac')
-        #     except OSError:
-        #         print(e)
-                
-        #     tvpath = Gtk.TreePath(0)
-        #     # itr = self.tagvalues.get_itr_first()
-        #     # print(itr)
-        #     for n, fname in enumerate(files):
-        #         self.tagvalues.append(fname,['','',''])
-        #         print(n, fname)
-                
-
-
-
-
     def on_delete(self, tagview, event):
         if event.type == Gdk.EventType.KEY_PRESS and \
                         event.keyval == 0xffff:
@@ -646,7 +589,6 @@ class TagView(Gtk.TreeView):
             menu.append(item)
             menu.show_all()
             menu.popup(None, None, None, None, event.button, event.time)
-            print('two')
 
     def on_changed(self, sel):
         print('on_changed')
@@ -686,35 +628,9 @@ class TagView(Gtk.TreeView):
             itr = nxt_iter
         model.remove(itr)
 
-
 class Model(Gtk.ListStore):
     def __init__(self):
         Gtk.ListStore.__init__(self, str, str, str, str)
-
-'''
-class FileBrowser(Gtk.FileChooserDialog):
-    def __init__(self, title):
-        if title == 'Choose FLAC Folder':
-            action = Gtk.FileChooserAction.SELECT_FOLDER
-            fltr = Gtk.FileFilter()
-            fltr.set_name('flac folder')
-            fltr.add_mime_type('inode/directory')
-            fltr.add_pattern('*.flac')
-
-        elif title == 'Choose Text File':
-            action = Gtk.FileChooserAction.OPEN
-            fltr = Gtk.FileFilter()
-            fltr.set_name('text file')
-            fltr.add_mime_type('text/plain')
-
-        Gtk.FileChooserDialog.__init__(self,
-                                       title=title,
-                                       parent=None,
-                                       action=action)
-        self.set_filter(fltr)
-        self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
-        self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
-'''
 
 class TitleFinder(object):
     def __init__(self, textfile_name):

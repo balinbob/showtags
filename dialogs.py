@@ -31,15 +31,11 @@ class FileBrowser(Gtk.FileChooserDialog):
         self.set_transient_for(parent)
         self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
-        print('hey!')
 
     def choose_folder(self, folder):
-        # resp = self.run()
-        # dialog = FileBrowser('Choose FLAC Folder')
         if folder:
             self.set_current_folder(folder)
         self.set_size_request(800, 600)
-        # self.set_transient_for(widget)
         resp = self.run()
         if resp == Gtk.ResponseType.OK:
             fn = self.get_filename()
@@ -47,7 +43,6 @@ class FileBrowser(Gtk.FileChooserDialog):
                     if f.endswith('.flac')]
             self.parent.flacs.sort()
             self.parent.showpath = fn
-            # folder = (self.parent.showpath, self.parent.flacs)
             print(self.parent.showpath)
         self.hide()
 
@@ -55,8 +50,6 @@ class FileBrowser(Gtk.FileChooserDialog):
         if folder:
             self.set_current_folder(folder)
         resp = self.run()
-#        dialog = FileBrowser('Choose Text File')
-#        resp = dialog.run()
         if resp == Gtk.ResponseType.OK:
             fn = self.get_filename()
             self.parent.text = [fn]
