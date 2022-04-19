@@ -12,6 +12,7 @@ from mutagen import File
 from mutagen.flac import Picture
 from dragbox import DropImage
 from combo import TagCombo
+from dialogs import FileBrowser
 import gi
 from glob import glob
 from importlib import import_module
@@ -22,9 +23,11 @@ GdkPixbuf = import_module('gi.repository.GdkPixbuf')
 # from gi.repository import Gtk
 # from gi.repository import Gdk
 
-
 class MyWindow(Gtk.Window):
     rescan_flag = False
+    showpath = ''
+    flacs = ''
+    folder = ''
 
     def removables_changed(self, entry, data=None):
         remove = entry.get_text()
@@ -75,6 +78,7 @@ class MyWindow(Gtk.Window):
             # print(pname, '   ', pattern)
             s = check_output(['pytaggr',
                               '--noconfirm',
+                              '--justify',
                               '--tag2fn',
                               pattern,
                               pname])
@@ -105,11 +109,16 @@ class MyWindow(Gtk.Window):
                 mf = File(fpath)
                 mf['tracknumber'] = track
                 mf['title'] = title
-
+                # get each item from the  combo
                 for item in self.tc.tag_dict:
                     val = self.tc.tag_dict[item]
+                    # don't save unset tag items
                     if val != '---':
                         mf[item] = val
+                    # delete tag keys set to null string
+                    if val == '':
+                        mf.pop(item)
+
                 # a folder.jpg etc has been dropped
                 if picture:
                     mf.clear_pictures()
@@ -117,6 +126,20 @@ class MyWindow(Gtk.Window):
                 mf.save()
         print('done')
 
+    def choose_txt(self, widget, folder, data=None):
+        print('data is:  ', data)
+        
+        self.textfile_chooser.choose_txt(folder)
+        print('self.text is: ', self.text)
+        if self.text:
+            self.load_text_file()
+
+    def choose_folder(self, widget, folder=''):
+        self.folder_chooser.choose_folder(folder)
+        print('foldre: ', folder)
+        if self.flacs:
+            self.load_files_into_listview()
+    
     def __init__(self, argv):
         Gtk.Window.__init__(self, title='ShowTags')
         self.connect('destroy', Gtk.main_quit)
@@ -129,6 +152,7 @@ class MyWindow(Gtk.Window):
         if len(argv) > 1:
             if os.path.isdir(argv[1]):
                 folder = argv[1]
+        self.folder = folder
         self.argv = argv
         self.mainbox = Gtk.VBox()
         self.mainbox.set_size_request(600, 220)
@@ -142,11 +166,20 @@ class MyWindow(Gtk.Window):
         self.scrlwindow.add(self.tagview)
 
         self.mainbox.pack_start(self.scrlwindow, True, True, 6)
+
+        self.textfile_chooser = FileBrowser(self, 'Choose Text File')
+        self.folder_chooser = FileBrowser(self, 'Choose FLAC Folder') 
         self.text_button = Gtk.Button(label='Text File')
-        self.text_button.connect('clicked', self.choose_txt)
+        self.text_button.connect('clicked', 
+                self.choose_txt,
+                self.folder
+                )
 
         self.flac_button = Gtk.Button(label='FLAC folder')
-        self.flac_button.connect('clicked', self.choose_folder, folder)
+        self.flac_button.connect('clicked', 
+                self.choose_folder, 
+                self.folder
+                )
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked', self.rescan)
         self.reload_button.set_tooltip_text('Rescan for titles from\n\
@@ -314,8 +347,10 @@ class MyWindow(Gtk.Window):
                 break
         return (e)
 
+        '''
     def choose_txt(self, data):
         dialog = FileBrowser('Choose Text File')
+        print('wrong!')
         resp = dialog.run()
         if resp == Gtk.ResponseType.OK:
             fn = dialog.get_filename()
@@ -324,7 +359,9 @@ class MyWindow(Gtk.Window):
         else:
             dialog.destroy()
             return
-
+        '''
+        
+    def load_text_file(self):
         tf = TitleFinder(self.text[0])
         self.titles = tf.find_titles()
         columns = self.tagview.get_columns()
@@ -355,8 +392,9 @@ class MyWindow(Gtk.Window):
             self.tagging.set_sensitive(True)
             self.rename_button.set_sensitive(True)
 
+        '''
     def choose_folder(self, widget, folder):
-        dialog = FileBrowser('Choose FLAC Folder')
+        dialog = FileBrowser(self, 'Choose FLAC Folder')
         if folder:
             dialog.set_current_folder(folder)
 
@@ -371,7 +409,9 @@ class MyWindow(Gtk.Window):
             dialog.destroy()
             return
         dialog.destroy()
+        '''
 
+    def load_files_into_listview(self):
         filename = Gtk.CellRendererText()
         title = Gtk.CellRendererText()
         number = Gtk.CellRendererText()
@@ -410,20 +450,20 @@ class MyWindow(Gtk.Window):
         self.model[path][2] = newtext
 
     def read_tags(self, flacs):
+        if not flacs:
+            return
         itr = self.model.get_iter_first()
         mfs = []
         for flac in flacs:
             f = os.path.join(os.path.realpath(self.showpath), flac)
             if os.path.isfile(f):
                 mfs.append(File(f))
-
+        
         for mf in mfs:
             title = mf.get('title', [None])
-#            num = mf.get('tracknumber',[None])
             num = [None]
             if title[0]:
                 self.model[itr][2] = mf['title'][0]
-                # self.model[itr][0] = mf['title'][0]
             if num[0]:
                 self.model[itr][1] = mf['tracknumber'][0]
             itr = self.model.iter_next(itr)
@@ -651,7 +691,7 @@ class Model(Gtk.ListStore):
     def __init__(self):
         Gtk.ListStore.__init__(self, str, str, str, str)
 
-
+'''
 class FileBrowser(Gtk.FileChooserDialog):
     def __init__(self, title):
         if title == 'Choose FLAC Folder':
@@ -674,7 +714,7 @@ class FileBrowser(Gtk.FileChooserDialog):
         self.set_filter(fltr)
         self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
-
+'''
 
 class TitleFinder(object):
     def __init__(self, textfile_name):

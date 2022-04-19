@@ -2,7 +2,7 @@
 # vim: set ts=4 sw=4 et ai:
 #
 # putart imagefile audiofiles...
-# GPL2 2022 Bob Allred
+# GPL3 2022 Bob Allred
 # embed an image (cover) in a compressed audio file (.flac, .mp3)
 
 import sys
@@ -16,7 +16,7 @@ picture = flac.Picture()
 def myhelp():
     print('%s imagefile audiofiles...' % sys.argv[0])
     print('embed cover art into compressed audio file(s) [flac, mp3]')
-    print('putart GPL2 2022 Bob Allred')
+    print('putart GPL3 2022 Bob Allred')
 
 def img_load(fname):
     try:
