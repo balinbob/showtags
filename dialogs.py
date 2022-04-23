@@ -31,11 +31,11 @@ class FileBrowser(Gtk.FileChooserDialog):
         self.set_transient_for(parent)
         self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         self.add_buttons(Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
+        self.set_size_request(700, 500)
 
     def choose_folder(self, folder):
         if folder:
             self.set_current_folder(folder)
-        self.set_size_request(800, 600)
         resp = self.run()
         if resp == Gtk.ResponseType.OK:
             fn = self.get_filename()

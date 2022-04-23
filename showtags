@@ -88,6 +88,7 @@ class MyWindow(Gtk.Window):
         print('tagging')
         picture = Picture()
         if self.coverart.filename:
+            print(self.coverart.filename)
             picture.type = 3
             picture.mime = self.coverart.mime
             picture.data = self.coverart.get_bytes() 
@@ -96,7 +97,7 @@ class MyWindow(Gtk.Window):
             fpath = os.path.join(os.path.realpath(self.showpath), row[0])
             track = row[1]
             title = row[2]
-            print(fpath)
+            # print(fpath)
             if not fpath.endswith('.flac'):
                 fpath += '.flac'
             
@@ -115,7 +116,8 @@ class MyWindow(Gtk.Window):
                         mf.pop(item)
 
                 # a folder.jpg etc has been dropped
-                if picture:
+                if hasattr(picture, 'data') and len(picture.data) > 60:
+                    print('here')
                     mf.clear_pictures()
                     mf.add_picture(picture)
                 mf.save()
@@ -335,20 +337,6 @@ class MyWindow(Gtk.Window):
                 break
         return (e)
 
-        '''
-    def choose_txt(self, data):
-        dialog = FileBrowser('Choose Text File')
-        print('wrong!')
-        resp = dialog.run()
-        if resp == Gtk.ResponseType.OK:
-            fn = dialog.get_filename()
-            self.text = [fn]
-            dialog.destroy()
-        else:
-            dialog.destroy()
-            return
-        '''
-        
     def load_text_file(self):
         tf = TitleFinder(self.text[0])
         self.titles = tf.find_titles()
@@ -427,10 +415,19 @@ class MyWindow(Gtk.Window):
         for mf in mfs:
             title = mf.get('title', [None])
             num = [None]
+            num = mf.get('tracknumber', [None])
+            if num[0] and len(num[0]) < 3 and mf.get('discnumber'):
+                if len(num[0]) < 2:
+                    num[0] = mf['discnumber'][0] + '0' + num[0]
+                else:
+                    num[0] = mf['discnumber'][0] + num[0]
+            if num[0] and len(num[0]) < 2:
+                num[0] = num[0].zfill(2)
             if title[0]:
                 self.model[itr][2] = mf['title'][0]
             if num[0]:
-                self.model[itr][1] = mf['tracknumber'][0]
+                self.model[itr][1] = num[0]
+                # self.model[itr][1] = mf['tracknumber'][0]
             itr = self.model.iter_next(itr)
             self.setcover(mf)
         # dropdowns
@@ -488,7 +485,12 @@ class CoverArt(DropImage):
             return False
         elif not mf.pictures:
             return False
-        else:
+        try:
+            if len(self.mf.pictures[0]) > 20:   # arbitrary
+                return True
+        except AttributeError as e:
+            return False
+        finally:
             return True
 
     def set_flac(self, mf=None, itr=None):
@@ -500,7 +502,7 @@ class CoverArt(DropImage):
         if not self.homogenous:
             self.clear()
             self.first_image = None
-            self.is_displayed = False
+            self.displayed = False
         if self.displayed:
             return
         else:
@@ -619,7 +621,11 @@ class TagView(Gtk.TreeView):
 
     def on_remove(self, widget):
         print('on_remove')
-        model, itr = self.sel.get_selected()
+        try:
+            model, itr = self.sel.get_selected()
+        except AttributeError:
+            print('make a selection first!')
+            return
         while True:
             nxt_iter = model.iter_next(itr)
             if not nxt_iter:

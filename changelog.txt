@@ -13,3 +13,7 @@
 #                    the chooser to that folder
 # 2022-04-16	fix: added helper to adapt to whichever 'magic' package is
 #		     installed
+# 2022-04-19	improved:  reworked file chooser dialogs, moved to submodule
+# 2022-04-19	improved:  removed old code and debugging code
+# 2022-04-22	fix:  don't tag with blank cover image
+# 2022-04-22	fix:  don't try to remove title without a valid selection
