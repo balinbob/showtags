@@ -16,6 +16,7 @@ class FileBrowser(Gtk.FileChooserDialog):
             fltr.set_name('flac folder')
             fltr.add_mime_type('inode/directory')
             fltr.add_pattern('*.flac')
+            fltr.add_pattern('*.ape')
 
         elif title == 'Choose Text File':
             action = Gtk.FileChooserAction.OPEN
@@ -40,7 +41,8 @@ class FileBrowser(Gtk.FileChooserDialog):
         if resp == Gtk.ResponseType.OK:
             fn = self.get_filename()
             self.parent.flacs = [f for f in os.listdir(fn) \
-                    if f.endswith('.flac')]
+                    if f.lower().endswith('.flac') or 
+                    f.lower().endswith('.ape')]
             self.parent.flacs.sort()
             self.parent.showpath = fn
             print(self.parent.showpath)

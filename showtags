@@ -8,7 +8,7 @@ import codecs
 from subprocess import check_output
 from textview import TextBox
 from tempfile import NamedTemporaryFile as NTF
-from mutagen import File
+from mutagen import File, MutagenError, apev2
 from mutagen.flac import Picture
 from dragbox import DropImage
 from combo import TagCombo
@@ -71,8 +71,8 @@ class MyWindow(Gtk.Window):
         pathnames = [os.path.join(self.showpath, fname) for fname in fnames]
 
         for n, pname in enumerate(pathnames):
-            if not pname.endswith('.flac'):
-                pname += '.flac'
+            # if not pname.endswith('.flac'):
+            #     pname += '.flac'
             s = check_output(['pytaggr',
                               '--noconfirm',
                               '--justify',
@@ -95,14 +95,18 @@ class MyWindow(Gtk.Window):
         for row in self.model:
             print(row[0])
             fpath = os.path.join(os.path.realpath(self.showpath), row[0])
+            print('fpath: ', fpath)
             track = row[1]
             title = row[2]
             # print(fpath)
-            if not fpath.endswith('.flac'):
-                fpath += '.flac'
-            
+            # if not fpath.endswith('.flac'):
+            #     fpath_flac = fpath + '.flac' 
             if os.path.exists(fpath) and track and title:
                 mf = File(fpath)
+                try:
+                    mf.add_tags()
+                except (MutagenError, apev2.error):
+                    pass
                 mf['tracknumber'] = track
                 mf['title'] = title
                 # get each item from the  combo
@@ -139,6 +143,7 @@ class MyWindow(Gtk.Window):
         folder = ''
         cwd = os.getcwd()
         files = glob(cwd + '/*.flac')
+        files.extend(glob(cwd + '/*.ape'))
         if files:
             folder = cwd
         
@@ -398,11 +403,16 @@ class MyWindow(Gtk.Window):
         self.read_tags(self.flacs)
         if self.model[1][2]:
             self.rename_button.set_sensitive(True)
+        model = self.tagview.get_model()
+        sel = self.tagview.get_selection()
+        itr = model.get_iter_first()
+        sel.select_iter(itr)
+        self.tagview.on_changed(sel)
 
     def on_edited(self, d1=None, path=None, newtext=None):
         self.model[path][2] = newtext
 
-    def read_tags(self, flacs):
+    def read_tags(self, flacs=[]):
         if not flacs:
             return
         itr = self.model.get_iter_first()
@@ -482,6 +492,8 @@ class CoverArt(DropImage):
 
     def flac_has_picture(self, mf=None):
         if not mf:
+            return False
+        elif not hasattr(mf, 'pictures'):
             return False
         elif not mf.pictures:
             return False
@@ -563,6 +575,8 @@ class TagView(Gtk.TreeView):
                         event.keyval == 0xffff:
             sel = self.get_selection()
             model, itr = sel.get_selected()
+            if not itr:
+                return
             while True:
                 nxt_iter = model.iter_next(itr)
                 if not nxt_iter:
@@ -577,6 +591,7 @@ class TagView(Gtk.TreeView):
 
             pthinfo = self.get_path_at_pos(event.x, event.y)
             path = pthinfo[0]
+            
             self.get_selection().connect('changed', self.on_changed)
             if pthinfo is not None:
                 path, col, cellx, celly = pthinfo
@@ -601,6 +616,7 @@ class TagView(Gtk.TreeView):
 
     def on_insert(self, menuitem):
         print('on_insert')
+        self.sel = self.get_selection()
         model, self.sel_itr = self.sel.get_selected()
         itr = self.sel_itr
         vlist = self.vlist

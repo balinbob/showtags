@@ -69,7 +69,7 @@ class DropImage(Gtk.Image):
         if mime0 == 'image':
             self.pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                     self.filepath,
-                    300, 
+                    600, 
                     -1, 
                     True)
             self.set_from_pixbuf(self.pixbuf)
