@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "showtags"
+version = "0.2.4"
+description = "tag and rename audio files from an included 'info.txt' containing the setlist"
+authors = ["Robert Allred <balinbob@gmail.com>"]
+license = "GPL-3.0-or-later"
+include  = []
+readme = "README.md"
+# python = "^3.6"
+homepage = "https://github.com/balinbob/showtags"
+repository = "https://github.com/balinbob/showtags"
+documentation = "https://github.com/balinbob/showtags"
+keywords = ["music", "tag", "mutagen", "gtk3", "live", "concert"]
+classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI-APPROved :: GPL-3.0-or-later",
+        "Operating System :: OS Independent",
+    ]
+packages = [
+#     { include = "showtags" },
+    { include = "libshowtags" },
+]
+
+
+[tool.poetry.dependencies]
+mutagen = "^1.38"
+python = "^3.6"
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry.scripts]
+showtags = "libshowtags:main"

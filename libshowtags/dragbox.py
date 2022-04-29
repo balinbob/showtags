@@ -2,7 +2,7 @@
 
 import gi
 import sys
-from mymagic import magic
+from .mymagic import magic
 from urllib.parse import urlparse, unquote_plus
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GdkPixbuf

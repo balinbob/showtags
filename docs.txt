@@ -1,0 +1,101 @@
+Welcome to Showtags
+--------------------
+
+If you collect recordings of live concerts, etc, showtags is the app to tag & rename them
+(provided they are in FLAC format) to your liking.  Experimentally. showtags also supports
+Ape files created with the 'mac' encoder.
+
+Showtags works on most Linux distributions with a GTK3 installation.  It may someday work
+on other OSes.   If you want to try it, please let me know what needs to be modified, or
+submit a pull request.  
+
+The app uses a shell script with several 'grep' and 'sed' commands to locate the titles to
+the tracks, and print them on STDOUT, where they are captured by showtags.  I hope to one
+day port the shell script to Python, to make the app Pure Python.
+
+Installation:
+_____________
+
+You can obtain the source code for showtags at:
+https://github.com/balinbob/showtags
+and the code for the accompanying pytaggr at:
+https://github.com/balinbob/pytaggr
+
+Pytaggr is a command-line program for working with tags, including in batch format, in
+audio files.  It is used here only to assist when you want to rename audio files from
+their tags.  
+
+If you don't already have it, install 'pip' which is a command-line utility for installing
+Python programs.
+
+On the command-line, type:  pip install -v pytaggr-(version).whl
+and then: pip install -v showtags-(version).whl
+
+This should install pytaggr and showtags, and their accompanying libraries.  Do not install 
+them as root, or with sudo.   That way they will be installed in your home folder.   You can
+see the paths and filenames as they are installed with pip install -v.  If you do not have
+the local binary path in your environment's PATH variable, pip will warn you to include it.
+In your .bashrc file, in your home directory, at the very end add:
+export PATH="$PATH:/home/bob/.local/bin"
+You may try this out by typing the same thing into the command-line in your terminal-emulator.
+Then, type:  which showtags
+which should tell you showtags' path, and verify that you can now run it with just the word
+showtags.  If it works, add that directory to your PATH in .bashrc, so that showtags is always
+available.
+
+Running Showtags:
+_______________
+
+For now, run showtags' GUI from a terminal-emulator, making sure your PATH variable includes
+the path to the showtags executable.  When running on the command-line, you can use 'cd' to 
+change directory to your FLAC files, and that path will be used as the default when opening
+the File Chooser. or you can specify the path on the command-line after the name of the app.
+When you do neither one, you'll simply be prompted to browse for the path in the GUI.
+
+Steps to tag &/or rename your files:
+------------------------------------
+
+1.  Click the 'FLAC folder' button, and browse for the folder containing the files to be
+    tagged.  Click 'Open' and a list of those files will be loaded into the form.  Any 
+    existing tags will also appear in the right-hand column, where you can edit them or
+    simply use them as they are for renaming the files.
+
+2.  Click the 'Text File' button, which is now no longer 'greyed out', to load the .txt
+    containing the show info.  The shell script will parse the file, and attempt to load
+    the titles into the form beside the filenames, as well as tracknumbers.
+
+    Should any unwanted text appear as a title, such that you have more titles than files,
+    you can right-click the unwanted text and remove it.   If titles are missing, you may
+    need to switch to the text view and temporarily edit the tracklist so that they will
+    be found.   The best way is to precede each title in the Text view with the tracknumbers.
+    They will be easier to find correctly.  Go back to Main, and click Rescan.
+
+    If you need to edit a title, double click that title.  If you simply need to add a
+    missed title, right-click, and select 'insert' to insert a blank title.
+
+    Usually showtags will find the correct titles itself.
+
+3.  If a character needs to be removed from titles (this sometimes happens when titles have
+    an asterisk or greater-than sign in them) you can put a string of single characters to
+    remove into the top text entry at the left, and watch how the titles are modified.  To
+    remove an entire string from several titles, use the entry below.  This is usually an
+    optional step.
+
+    Removing asterisks, greater-than signs, etc, is optional, but will sometimes make the
+    filenames more easily used in the terminal.
+
+4.  Now, simply click Tag.  If you want to rename the files, then click Rename, and see the
+    new filenames appear in the form.
+
+5.  To add other tags, such as the ones displayed on your computer, etc, (Artist, Album, etc.),
+    click the small button between the two lists at the botttom, to expand the dropdown list of
+    tags for all files, and select one to edit.  You may also enter your own tag names and values.
+    The 'venue' tag may be used, but remember that it will probably not be shown on your computer
+    or phone's music-player app.  Best to include the date and venue in the 'album' tag.
+
+6.  Currently, you may switch to the Artwork View, and drag and drop a jpeg or png image there.
+    It will appear, and will be applied as the front cover art for the files, when you Tag.
+
+
+
+

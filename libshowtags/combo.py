@@ -10,7 +10,7 @@ from gi.repository import Gio
 
 import os,sys
 from subprocess import check_output
-from textview import TextBox
+from .textview import TextBox
 from tempfile import NamedTemporaryFile as NTF
 import re
 from mutagen import File
