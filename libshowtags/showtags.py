@@ -592,21 +592,14 @@ class TagView(Gtk.TreeView):
         self.connect('key-press-event', self.on_delete)
         
     def on_delete(self, tagview, event):
+        # delete a whole row on DEL key
         if event.type == Gdk.EventType.KEY_PRESS and \
                         event.keyval == 0xffff:
             sel = self.get_selection()
             model, itr = sel.get_selected()
             if not itr:
                 return
-            print(model.get_value(itr, 2))
             model.remove(itr)
-            # while True:
-            #     nxt_iter = model.iter_next(itr)
-            #    if not nxt_iter:
-            #        break
-            #    model[itr][2] = model[nxt_iter][2]
-            #    itr = nxt_iter
-            # model.remove(itr)
         self.get_toplevel().check_form_complete()
 
     def on_tagview_clicked(self, tagview, event):
@@ -652,19 +645,18 @@ class TagView(Gtk.TreeView):
         itr = self.sel_itr
         vlist = self.vlist
         last = len(model)
-        model.append(['', str(last+1), '', ''])
+        # model.append(['', str(last+1), '', ''])
+        values = []
         while itr:
-            value = model.get_value(itr, 2)
-            vlist.append(value)
+            values.append(model[itr][2])
             itr = model.iter_next(itr)
-        itr = self.sel.get_selected()[1]
-        itr = model.iter_next(itr)
-        vlist.reverse()
-        while itr:
-            model[itr][2] = vlist.pop()
-            itr = model.iter_next(itr)
-        itr = self.sel.get_selected()[1]
+        itr = self.sel_itr
         model[itr][2] = ''
+        itr = model.iter_next(itr)
+        values.reverse()
+        while itr and values:
+            model[itr][2] = values.pop()
+            itr = model.iter_next(itr)
         self.get_toplevel().check_form_complete()
 
     def on_remove(self, widget):
@@ -680,7 +672,10 @@ class TagView(Gtk.TreeView):
                 break
             model[itr][2] = model[nxt_iter][2]
             itr = nxt_iter
-        model.remove(itr)
+        if not model.get_value(itr, 0):
+            model.remove(itr)
+        else:
+            model[itr][2] = ''
         self.get_toplevel().check_form_complete()
 
 class Model(Gtk.ListStore):
