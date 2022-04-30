@@ -64,15 +64,26 @@ class MyWindow(Gtk.Window):
         for row in self.model:
             row[2] = row[2].replace(s, '')
 
+    def check_form_complete(self):
+        model = self.tagview.get_model()
+        for row in model:
+            if not row[0] or not row[2]:
+                self.tagging.set_sensitive(False)
+                self.rename_button.set_sensitive(False)
+                print('form not complete!')
+                return False
+        self.tagging.set_sensitive(True)
+        self.rename_button.set_sensitive(True)
+        return True
+
     def on_rename(self, widget):
         print('renaming')
+
         pattern = self.rename_pattern.get_text()
         fnames = [row[0] for row in self.model]
         pathnames = [os.path.join(self.showpath, fname) for fname in fnames]
 
         for n, pname in enumerate(pathnames):
-            # if not pname.endswith('.flac'):
-            #     pname += '.flac'
             s = check_output(['pytaggr',
                               '--noconfirm',
                               '--justify',
@@ -86,6 +97,7 @@ class MyWindow(Gtk.Window):
     
     def do_tagging(self, widget):
         print('tagging')
+        
         picture = Picture()
         if self.coverart.filename:
             print(self.coverart.filename)
@@ -232,6 +244,9 @@ class MyWindow(Gtk.Window):
         vbox3.pack_start(self.tagging, False, True, 0)
         rename_button = Gtk.Button(label='Rename')
         rename_button.connect('clicked', self.on_rename)
+        
+        rename_button.set_sensitive(False)
+        
         vbox3.pack_start(rename_button, False, False, 0)
         rename_pattern = Gtk.Entry()
         rename_pattern.set_text('%n %t.flac')
@@ -291,8 +306,7 @@ class MyWindow(Gtk.Window):
 
     def text_changed(self, d1, d2=None):
         self.rescan_flag = True
-        if self.model.get_iter_first():
-            self.tagging.set_sensitive(True)
+        self.check_form_complete()
 
     def switched(self, data=None, data2=None):
         if self.rescan_flag:
@@ -344,6 +358,9 @@ class MyWindow(Gtk.Window):
                 break
         return (e)
 
+    
+
+
     def load_text_file(self):
         tf = TitleFinder(self.text[0])
         self.titles = tf.find_titles()
@@ -369,11 +386,8 @@ class MyWindow(Gtk.Window):
         self.tc.set_header(self.header)
 
         self.textbox.buffer.set_text(self. text)
-
-        if self.model[1][2]:
+        if self.check_form_complete():
             self.vbox1.set_sensitive(True)
-            self.tagging.set_sensitive(True)
-            self.rename_button.set_sensitive(True)
     
     def load_files_into_listview(self):
         filename = Gtk.CellRendererText()
@@ -396,15 +410,13 @@ class MyWindow(Gtk.Window):
                 self.model.append([flac, s, '', ''])
                 print(flac)
 
-        self.tagging.set_sensitive(True)
-        self.rename_button.set_sensitive(True)
-
         self.text_button.set_sensitive(True)
         self.flac_button.set_sensitive(False)
         self.clearall_button.set_sensitive(True)
         self.read_tags(self.flacs)
-        if self.model[1][2]:
-            self.rename_button.set_sensitive(True)
+
+        self.check_form_complete()
+
         model = self.tagview.get_model()
         sel = self.tagview.get_selection()
         itr = model.get_iter_first()
@@ -413,6 +425,7 @@ class MyWindow(Gtk.Window):
 
     def on_edited(self, d1=None, path=None, newtext=None):
         self.model[path][2] = newtext
+        self.check_form_complete()
 
     def read_tags(self, flacs=[]):
         if not flacs:
@@ -455,6 +468,12 @@ class MyWindow(Gtk.Window):
                 key_model.append([key])
                 val_model.append([mf[key][0]])
 
+        self.rename_button.set_sensitive(True)
+        # if form is complete set tag and rename available
+        for row in self.model:
+            if not row[0] or not row[2]:
+                self.rename_button.set_sensitive(False)
+                self.tagging.set_sensitive(False)
 
     def setcover(self, mf):
         self.coverart.set_flac(mf)
@@ -579,24 +598,22 @@ class TagView(Gtk.TreeView):
             model, itr = sel.get_selected()
             if not itr:
                 return
-            while True:
-                nxt_iter = model.iter_next(itr)
-                if not nxt_iter:
-                    break
-                model[itr][2] = model[nxt_iter][2]
-                itr = nxt_iter
+            print(model.get_value(itr, 2))
             model.remove(itr)
+            # while True:
+            #     nxt_iter = model.iter_next(itr)
+            #    if not nxt_iter:
+            #        break
+            #    model[itr][2] = model[nxt_iter][2]
+            #    itr = nxt_iter
+            # model.remove(itr)
+        self.get_toplevel().check_form_complete()
 
     def on_tagview_clicked(self, tagview, event):
         if event.type == Gdk.EventType.BUTTON_PRESS and \
                         event.button == 3:
 
-            
-
             pthinfo = self.get_path_at_pos(event.x, event.y)
-            
-            print(pthinfo)
-
             path = pthinfo[0]
             self.get_selection().connect('changed', self.on_changed)
             if pthinfo is not None:
@@ -622,14 +639,14 @@ class TagView(Gtk.TreeView):
             row[1] = str(n+1).zfill(2)
 
     def on_changed(self, sel):
-        print('on_changed')
+        # print('on_changed')
         (model, itr) = sel.get_selected()
         self.sel = sel
         self.itr = itr
         self.vlist = []
 
     def on_insert(self, menuitem):
-        print('on_insert')
+        # print('on_insert')
         self.sel = self.get_selection()
         model, self.sel_itr = self.sel.get_selected()
         itr = self.sel_itr
@@ -648,6 +665,7 @@ class TagView(Gtk.TreeView):
             itr = model.iter_next(itr)
         itr = self.sel.get_selected()[1]
         model[itr][2] = ''
+        self.get_toplevel().check_form_complete()
 
     def on_remove(self, widget):
         print('on_remove')
@@ -663,6 +681,7 @@ class TagView(Gtk.TreeView):
             model[itr][2] = model[nxt_iter][2]
             itr = nxt_iter
         model.remove(itr)
+        self.get_toplevel().check_form_complete()
 
 class Model(Gtk.ListStore):
     def __init__(self):
