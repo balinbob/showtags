@@ -95,7 +95,6 @@ class MyWindow(Gtk.Window):
         for row in self.model:
             print(row[0])
             fpath = os.path.join(os.path.realpath(self.showpath), row[0])
-            print('fpath: ', fpath)
             track = row[1]
             title = row[2]
             # print(fpath)
@@ -592,14 +591,19 @@ class TagView(Gtk.TreeView):
         if event.type == Gdk.EventType.BUTTON_PRESS and \
                         event.button == 3:
 
-            pthinfo = self.get_path_at_pos(event.x, event.y)
-            path = pthinfo[0]
             
+
+            pthinfo = self.get_path_at_pos(event.x, event.y)
+            
+            print(pthinfo)
+
+            path = pthinfo[0]
             self.get_selection().connect('changed', self.on_changed)
             if pthinfo is not None:
                 path, col, cellx, celly = pthinfo
                 self.grab_focus()
                 self.set_cursor(path, col, 0)
+            
             menu = Gtk.Menu()
             item = Gtk.MenuItem(label='Insert')
             item.connect('activate', self.on_insert)
@@ -607,8 +611,15 @@ class TagView(Gtk.TreeView):
             item = Gtk.MenuItem(label='Remove')
             item.connect('activate', self.on_remove)
             menu.append(item)
+            item = Gtk.MenuItem(label='Number all\nsequentially')
+            item.connect('activate', self.on_sequential)
+            menu.append(item)
             menu.show_all()
             menu.popup(None, None, None, None, event.button, event.time)
+
+    def on_sequential(self, selection):
+        for n, row in enumerate(self.get_model()):
+            row[1] = str(n+1).zfill(2)
 
     def on_changed(self, sel):
         print('on_changed')
