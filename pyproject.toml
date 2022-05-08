@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "showtags"
-version = "0.2.41"
+version = "0.2.5"
 description = "tag and rename audio files from an included 'info.txt' containing the setlist"
 authors = ["Robert Allred <balinbob@gmail.com>"]
 license = "GPL-3.0-or-later"

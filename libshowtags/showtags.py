@@ -13,6 +13,7 @@ from mutagen.flac import Picture
 from .dragbox import DropImage
 from .combo import TagCombo
 from .dialogs import FileBrowser
+from .ftitles import fnd
 import gi
 from glob import glob
 from importlib import import_module
@@ -62,7 +63,19 @@ class MyWindow(Gtk.Window):
     def on_string_entry(self, entry):
         s = entry.get_text()
         for row in self.model:
-            row[2] = row[2].replace(s, '')
+            if s == '':
+                row[2] = row[3]
+            else:
+                textline = row[2].replace(s, '')
+                if textline and len(textline) < len(row[2]):
+                    row[2] = textline
+                else:
+                    try:
+                        textline = re.sub(s, '', row[2])
+                    except:
+                        continue
+                    if textline != '' and len(textline) < len(row[2]):
+                        row[2] = textline
 
     def check_form_complete(self):
         model = self.tagview.get_model()
@@ -109,9 +122,6 @@ class MyWindow(Gtk.Window):
             fpath = os.path.join(os.path.realpath(self.showpath), row[0])
             track = row[1]
             title = row[2]
-            # print(fpath)
-            # if not fpath.endswith('.flac'):
-            #     fpath_flac = fpath + '.flac' 
             if os.path.exists(fpath) and track and title:
                 mf = File(fpath)
                 try:
@@ -132,7 +142,6 @@ class MyWindow(Gtk.Window):
 
                 # a folder.jpg etc has been dropped
                 if hasattr(picture, 'data') and len(picture.data) > 60:
-                    print('here')
                     mf.clear_pictures()
                     mf.add_picture(picture)
                 mf.save()
@@ -142,6 +151,7 @@ class MyWindow(Gtk.Window):
         self.textfile_chooser.choose_txt(folder)
         if self.text:
             self.load_text_file()
+
 
     def choose_folder(self, widget, folder=''):
         self.folder_chooser.choose_folder(folder)
@@ -195,7 +205,7 @@ class MyWindow(Gtk.Window):
         self.reload_button = Gtk.Button(label='Rescan')
         self.reload_button.connect('clicked', self.rescan)
         self.reload_button.set_tooltip_text('Rescan for titles from\n\
-    the text in the TextView')
+the text in the TextView')
         self.tagging = Gtk.Button(label='Tag')
         self.tagging.connect('clicked', self.do_tagging)
         self.tagging.set_sensitive(False)
@@ -227,16 +237,18 @@ class MyWindow(Gtk.Window):
         removables.connect('changed', self.removables_changed)
         vbox1.pack_start(removables, False, True, 2)
         removables.set_tooltip_text('Type a string of single\n\
-    characters to remove\n\
-    from all titles in which they exist')
+characters to remove\n\
+from all titles in which they exist')
         self.removables = removables
 
         strings = Gtk.Entry()
         strings.set_size_request(-1, 20)
         strings.connect('activate', self.on_string_entry)
         strings.set_tooltip_text('Type any word or group of characters\n\
-    and press Return to remove them from all\n\
-    titles in which they exist')
+and press Return to remove them from all\n\
+titles in which they exist.  This is\n\
+checked for a RegExp.  Enter an empty\n\
+string to reset')
         self.strings = strings
 
         vbox1.pack_start(Gtk.Label(label='Strings to Remove'), False, True, 4)
@@ -255,19 +267,24 @@ class MyWindow(Gtk.Window):
         vbox3.pack_start(rename_pattern, False, False, 0)
         self.rename_pattern = rename_pattern
         rename_pattern.set_tooltip_text('\
-    pattern by which tags will be\n\
-    translated into filenames:\n\
-    %n = tracknumber\n\
-    %t = title\n\
-    %a = artist\n\
-    %b = album\n\
-    %d = date')
-
+pattern by which tags will be\n\
+translated into filenames:\n\
+%n = tracknumber\n\
+%t = title\n\
+%a = artist\n\
+%b = album\n\
+%d = date')
+        
         clearall_button = Gtk.Button(label='Clear All')
         clearall_button.connect('clicked', self.on_clear_btn, self.flac_button)
-        vbox2.pack_start(clearall_button, False, True, 0)
+        vbox3.pack_start(clearall_button, False, True, 0)
         self.mainbox.pack_start(hbox, True, True, 0)
-
+        self.retry = Gtk.Button(label='Try 2nd Method')
+        self.retry.connect('clicked', self.on_retry)
+        self.retry2 = Gtk.Button(label='Try 1st Method')
+        self.retry2.connect('clicked', self.on_retry2)
+        vbox2.pack_start(self.retry, False, True, 0)
+        self.retry.set_sensitive(False)
         stack = Gtk.Stack()
         stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
         stack.set_transition_duration(600)
@@ -300,6 +317,23 @@ class MyWindow(Gtk.Window):
         rename_button.set_sensitive(False)
         self.clearall_button = clearall_button
         self.rename_button = rename_button
+        self.method = 1
+
+    def on_retry(self, widget):
+        self.method = 2
+        self.rescan()
+        self.check_form_complete()
+        self.vbox2.remove(self.retry)
+        self.vbox2.pack_end(self.retry2, False, True, 0)
+        self.retry2.show_all()
+
+    def on_retry2(self, widget):
+        self.method = 1
+        self.rescan()
+        self.check_form_complete()
+        self.vbox2.remove(self.retry2)
+        self.vbox2.pack_end(self.retry, False, True, 0)
+        self.retry.show_all()
 
     def on_pattern_focus_out(self, widget, event):
         return False
@@ -327,10 +361,15 @@ class MyWindow(Gtk.Window):
         fp.write(text)
         fp.flush()
         tf = TitleFinder(fp.name)
-        self.titles = tf.find_titles()
+        if self.method == 1:
+            self.titles = tf.find_titles(self.numfiles)
+        else:
+            self.titles = tf.find_titles2()
+
         col_len = len(self.model)
         for n in range(col_len):
             self.model[n][2] = ''
+            self.model[n][3] = ''
         for n, title in enumerate(self.titles):
             try:
                 self.model[n][2] = title
@@ -363,11 +402,13 @@ class MyWindow(Gtk.Window):
 
     def load_text_file(self):
         tf = TitleFinder(self.text[0])
-        self.titles = tf.find_titles()
+        self.titles = tf.find_titles(self.numfiles)
         columns = self.tagview.get_columns()
         columns[2].set_visible(True)
         columns[1].set_visible(True)
-
+        for n, row in enumerate(self.model):
+            self.model[n][2] = ''
+            self.model[n][3] = '' 
         for n, title in enumerate(self.titles):
             title = re.sub('^\s*', '', title)
             title = re.sub('\s*$', '', title)
@@ -386,8 +427,10 @@ class MyWindow(Gtk.Window):
         self.tc.set_header(self.header)
 
         self.textbox.buffer.set_text(self. text)
-        if self.check_form_complete():
+        self.check_form_complete()
+        if self.titles:
             self.vbox1.set_sensitive(True)
+        
     
     def load_files_into_listview(self):
         filename = Gtk.CellRendererText()
@@ -422,6 +465,8 @@ class MyWindow(Gtk.Window):
         itr = model.get_iter_first()
         sel.select_iter(itr)
         self.tagview.on_changed(sel)
+        self.numfiles = len(self.model)
+        self.retry.set_sensitive(True)
 
     def on_edited(self, d1=None, path=None, newtext=None):
         self.model[path][2] = newtext
@@ -685,18 +730,20 @@ class Model(Gtk.ListStore):
 class TitleFinder(object):
     def __init__(self, textfile_name):
         self.textfile = textfile_name
+        self.titles = []
         self.pth = os.path.abspath(__file__)
         self.pth = os.path.join(os.path.split(self.pth)[0], 'find_titles')
-        print(self.pth)
 
-    #  fixme
+    def find_titles(self, numfiles):
+        # titles = check_output([self.pth, self.textfile])
+        # title_list = titles.splitlines()
+        self.titles = fnd(self.textfile, numfiles)
+        return self.titles
 
-    def find_titles(self):
-        titles = check_output([self.pth, self.textfile])
-        title_list = titles.splitlines()
-        self.titles = [title.decode() for title in title_list]
-        del titles
-        del title_list
+    def find_titles2(self):
+        self.titles = check_output([self.pth, self.textfile])
+        self.titles = self.titles.splitlines()
+        self.titles = [title.decode() for title in self.titles]
         return self.titles
 
 def main():
